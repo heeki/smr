@@ -12,7 +12,7 @@ class DateTimeEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, o)
 
 # main class
-class Ingest:
+class SIngest:
     def __init__(self, queue):
         self.session = boto3.session.Session()
         self.cl_s3 = self.session.client("s3")

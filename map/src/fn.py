@@ -1,5 +1,6 @@
+import json
 import os
-from lib.s_ingest import SIngest
+from lib.s_map import SMap
 
 # helper functions
 def build_response(code, body):
@@ -32,16 +33,15 @@ def get_method(event):
 def handler(event, context):
     output = []
     for record in event["Records"]:
-        bucket = record["s3"]["bucket"]["name"]
-        key = record["s3"]["object"]["key"]
-        s_ingest.process(bucket, key)
+        message_id = record["messageId"]
         output.append({
-            "bucket": bucket,
-            "key": key
+            "message_id": message_id
         })
+        body = json.loads(record["body"])
+        for item in body:
+            s_map.process(item)
     return output
 
 # initialization
-queue = os.environ["QUEUE"]
-batch_size = os.environ["BATCHSIZE"]
-s_ingest = SIngest(queue)
+table = os.environ["TABLE"]
+s_map = SMap(table)
