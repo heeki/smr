@@ -31,7 +31,7 @@ def get_method(event):
 
 # lambda invoker handler
 def handler(event, context):
-    eid = event["Id"]
+    eid = event["eid"]
     output = {
         "eid": eid,
         "ingested": []

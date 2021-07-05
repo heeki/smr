@@ -1,0 +1,47 @@
+{
+    "StartAt": "Gate",
+    "States": {
+      "Gate": {
+        "Type": "Task",
+        "Resource": "${FnGate}",
+        "OutputPath": "$.",
+        "Next": "Choice"
+      },
+      "Choice": {
+        "Type": "Choice",
+        "Choices": [
+          {
+            "Variable": "$.result",
+            "StringEquals": "COMPLETE",
+            "Next": "MReduce"
+          },
+          {
+            "Variable": "$.result",
+            "StringEquals": "PENDING",
+            "Next": "Wait"
+          }
+        ],
+        "Default": "MReduce"
+      },
+      "MReduce": {
+        "Type": "Map",
+        "End": true,
+        "Iterator": {
+          "StartAt": "SReduce",
+          "States": {
+            "SReduce": {
+              "Type": "Task",
+              "Resource": "${FnReduce}",
+              "OutputPath": "$.",
+              "End": true
+            }
+          }
+        }
+      },
+      "Wait": {
+        "Type": "Wait",
+        "Seconds": 60,
+        "Next": "Gate"
+      }
+    }
+  }

@@ -8,7 +8,13 @@ Globals:
     Timeout: 60
     Tracing: Active
 Parameters:
-  pTableArn:
+  pCountersArn:
+    Type: String
+  pShuffleArn:
+    Type: String
+  pAslBucket:
+    Type: String
+  pAslKey:
     Type: String
 Resources:
   # Lambda
@@ -51,20 +57,109 @@ Resources:
                   - dynamodb:Query
                   - dynamodb:Scan
                   - dynamodb:UpdateItem
-                Resource: !Ref pTableArn
-  Fn:
+                Resource:
+                  - !Ref pCountersArn
+                  - !Ref pShuffleArn
+  FnGate:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: ../src
-      Handler: fn.handler
+      Handler: fn_gate.handler
       Role: !GetAtt FnRole.Arn
       Layers:
         - !Sub 'arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14'
-  FnLogGroup:
+      Environment:
+        Variables:
+          TABLE_COUNTERS: !Select [1, !Split ["/", !Ref pCountersArn]]
+          TABLE_SHUFFLE: !Select [1, !Split ["/", !Ref pShuffleArn]]
+  FnGateLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub '/aws/lambda/${Fn}'
+      LogGroupName: !Sub '/aws/lambda/${FnGate}'
+  FnReduce:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../src
+      Handler: fn_reduce.handler
+      Role: !GetAtt FnRole.Arn
+      Layers:
+        - !Sub 'arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14'
+      Environment:
+        Variables:
+          TABLE_SHUFFLE: !Select [1, !Split ["/", !Ref pShuffleArn]]
+  FnReduceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${FnReduce}'
+      RetentionInDays: 7
+  # Step Function
+  SFnRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - states.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: '/service-role/'
+      Policies:
+        - PolicyName: cloudwatch-logs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogDelivery
+                  - logs:GetLogDelivery
+                  - logs:UpdateLogDelivery
+                  - logs:DeleteLogDelivery
+                  - logs:ListLogDeliveries
+                  - logs:PutResourcePolicy
+                  - logs:DescribeResourcePolicies
+                  - logs:DescribeLogGroups
+                Resource: "*"
+        - PolicyName: lambda
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt FnGate.Arn
+                  - !GetAtt FnReduce.Arn
+  SFn:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+        DefinitionS3Location:
+          Bucket: !Ref pAslBucket
+          Key: !Ref pAslKey
+        DefinitionSubstitutions:
+          FnGate: !GetAtt FnGate.Arn
+          FnReduce: !GetAtt FnReduce.Arn
+        LoggingConfiguration:
+          Destinations:
+            - CloudWatchLogsLogGroup:
+                LogGroupArn: !GetAtt SFnLogGroup.Arn
+          IncludeExecutionData: true
+          Level: ALL
+        RoleArn: !GetAtt SFnRole.Arn
+        StateMachineType: STANDARD
+        TracingConfiguration:
+          Enabled: false
+  SFnLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/sf/smr-reduce"
       RetentionInDays: 7
 Outputs:
-  outFn:
-    Value: !Ref Fn
+  outFnGate:
+    Value: !Ref FnGate
+  outFnReduce:
+    Value: !Ref FnReduce
+  outSFn:
+    Value: !GetAtt SFn.Arn

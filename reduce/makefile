@@ -2,11 +2,12 @@ include etc/environment.sh
 
 reduce: reduce.package reduce.deploy
 reduce.package:
+	aws s3 cp iac/asl.json s3://${P_ASLBUCKET}/${P_ASLKEY}
 	sam package -t ${REDUCE_TEMPLATE} --output-template-file ${REDUCE_OUTPUT} --s3-bucket ${S3BUCKET}
 reduce.deploy:
 	sam deploy -t ${REDUCE_OUTPUT} --stack-name ${REDUCE_STACK} --parameter-overrides ${REDUCE_PARAMS} --capabilities CAPABILITY_NAMED_IAM
 reduce.local.invoke:
-	sam local invoke -t ${REDUCE_TEMPLATE} --parameter-overrides ${REDUCE_PARAMS} --env-vars etc/envvars.json -e etc/event.json Fn | jq
+	sam local invoke -t ${REDUCE_TEMPLATE} --parameter-overrides ${REDUCE_PARAMS} --env-vars etc/envvars.json -e etc/event.json FnGate | jq
 reduce.local.api:
 	sam local start-api -t ${REDUCE_TEMPLATE} --parameter-overrides ${REDUCE_PARAMS} --env-vars etc/envvars.json
 reduce.invoke:

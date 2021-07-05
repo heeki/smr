@@ -1,5 +1,6 @@
 import json
 import os
+from lib.s_counter import SCounter
 from lib.s_reduce import SReduce
 
 # helper functions
@@ -31,17 +32,21 @@ def get_method(event):
 
 # lambda invoker handler
 def handler(event, context):
-    output = []
-    for record in event["Records"]:
-        message_id = record["messageId"]
-        output.append({
-            "message_id": message_id
-        })
-        body = json.loads(record["body"])
-        for item in body:
-            s_reduce.process(item)
+    eid = event["eid"]
+    # c_ingested = s_counter.get(eid, "ingested")
+    # c_mapped = s_counter.get(eid, "mapped")
+    is_ready = s_counter.check_ready(eid)
+    output = {
+        "eid": eid,
+        # "ingested": c_ingested,
+        # "mapped": c_mapped
+        "is_ready": is_ready
+    }
+    print(json.dumps(output))
     return output
 
 # initialization
-table = os.environ["TABLE"]
-s_reduce = SReduce(table)
+table_counters = os.environ["TABLE_COUNTERS"]
+table_shuffle = os.environ["TABLE_SHUFFLE"]
+s_counter = SCounter(table_counters)
+s_reduce = SReduce(table_shuffle)
