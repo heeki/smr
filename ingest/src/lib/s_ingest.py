@@ -38,7 +38,7 @@ class SIngest:
         )
         return response
 
-    def process(self, bucket, key, batch_size=10, limit=1):
+    def process(self, eid, bucket, key, batch_size=10, limit=1):
         body = self.get_object(bucket, key)
         batch = []
         i_batch = 0
@@ -50,8 +50,11 @@ class SIngest:
                 batch.append(parsed)
                 i_batch += 1
             if i_batch == batch_size:
-                print(json.dumps(batch))
-                self.send_message(json.dumps(batch))
+                output = {
+                    "eid": eid,
+                    "batch": batch
+                }
+                self.send_message(json.dumps(output))
                 batch = []
                 i_batch = 0
                 i_limit += 1

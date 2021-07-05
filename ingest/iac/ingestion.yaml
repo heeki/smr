@@ -12,7 +12,20 @@ Parameters:
     Type: String
   pBatchSize:
     Type: String
+  pLimit:
+    Type: String
 Resources:
+  # DynamoDB
+  Counters:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
   # SQS
   IngestQ:
     Type: AWS::SQS::Queue
@@ -71,6 +84,19 @@ Resources:
                 Action:
                   - s3:GetObject
                 Resource: !Sub 'arn:aws:s3:::${pBucket}/*'
+        - PolicyName: dynamodb
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:DeleteItem
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                  - dynamodb:UpdateItem
+                Resource: !GetAtt Counters.Arn
         - PolicyName: sqs
           PolicyDocument:
             Version: '2012-10-17'
@@ -89,8 +115,10 @@ Resources:
       Role: !GetAtt FnRole.Arn
       Environment:
         Variables:
+          TABLE_COUNTERS: !Ref Counters
           QUEUE: !Ref IngestQ
           BATCHSIZE: !Ref pBatchSize
+          LIMIT: !Ref pLimit
       Layers:
         - !Sub 'arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14'
   FnLogGroup:
@@ -99,6 +127,10 @@ Resources:
       LogGroupName: !Sub '/aws/lambda/${Fn}'
       RetentionInDays: 7
 Outputs:
+  outCounters:
+    Value: !Ref Counters
+  outCountersArn:
+    Value: !GetAtt Counters.Arn
   outIngestQ:
     Value: !Ref IngestQ
   outIngestQArn:

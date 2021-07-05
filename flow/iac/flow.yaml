@@ -1,0 +1,88 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: SMR step functions flow
+Transform: AWS::Serverless-2016-10-31
+Globals:
+  Function:
+    Runtime: python3.8
+    Timeout: 60
+Parameters:
+  pAslBucket:
+    Type: String
+  pAslKey:
+    Type: String
+  pIngestArn:
+    Type: String
+  pMapArn:
+    Type: String
+  pReduceArn:
+    Type: String
+Resources:
+  # Step Function
+  SFnExecRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - states.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: '/service-role/'
+      Policies:
+        - PolicyName: cloudwatch-logs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogDelivery
+                  - logs:GetLogDelivery
+                  - logs:UpdateLogDelivery
+                  - logs:DeleteLogDelivery
+                  - logs:ListLogDeliveries
+                  - logs:PutResourcePolicy
+                  - logs:DescribeResourcePolicies
+                  - logs:DescribeLogGroups
+                Resource: "*"
+        - PolicyName: lambda
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !Ref pIngestArn
+                  - !Ref pMapArn
+                  - !Ref pReduceArn
+  SFn:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+        DefinitionS3Location:
+          Bucket: !Ref pAslBucket
+          Key: !Ref pAslKey
+        DefinitionSubstitutions:
+          FnIngest: !Ref pIngestArn
+          FnMap: !Ref pMapArn
+          FnReduce: !Ref pReduceArn
+        LoggingConfiguration:
+          Destinations:
+            - CloudWatchLogsLogGroup:
+                LogGroupArn: !GetAtt SFnLogGroup.Arn
+          IncludeExecutionData: true
+          Level: ALL
+        RoleArn: !GetAtt SFnExecRole.Arn
+        StateMachineType: STANDARD
+        TracingConfiguration:
+          Enabled: false
+  SFnLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/sf/smr-flow"
+      RetentionInDays: 7
+Outputs:
+  outSFn:
+    Value: !GetAtt SFn.Arn

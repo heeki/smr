@@ -1,4 +1,5 @@
 import os
+from lib.s_counter import SCounter
 from lib.s_ingest import SIngest
 
 # helper functions
@@ -30,18 +31,30 @@ def get_method(event):
 
 # lambda invoker handler
 def handler(event, context):
-    output = []
+    eid = event["Id"]
+    output = {
+        "eid": eid,
+        "ingested": []
+    }
     for record in event["Records"]:
-        bucket = record["s3"]["bucket"]["name"]
-        key = record["s3"]["object"]["key"]
-        s_ingest.process(bucket, key)
-        output.append({
+        if "s3" in record:
+            bucket = record["s3"]["bucket"]["name"]
+            key = record["s3"]["object"]["key"]
+        else:
+            bucket = record["bucket"]
+            key = record["key"]
+        s_ingest.process(eid, bucket, key, batch_size, limit)
+        s_counters.increment(eid, "ingested")
+        output["ingested"].append({
             "bucket": bucket,
             "key": key
         })
     return output
 
 # initialization
+table_counters = os.environ["TABLE_COUNTERS"]
 queue = os.environ["QUEUE"]
-batch_size = os.environ["BATCHSIZE"]
+batch_size = int(os.environ["BATCHSIZE"])
+limit = int(os.environ["LIMIT"])
 s_ingest = SIngest(queue)
+s_counters = SCounter(table_counters)

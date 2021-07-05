@@ -1,7 +1,6 @@
 import json
 import os
-from lib.s_counter import SCounter
-from lib.s_map import SMap
+from lib.s_reduce import SReduce
 
 # helper functions
 def build_response(code, body):
@@ -32,26 +31,17 @@ def get_method(event):
 
 # lambda invoker handler
 def handler(event, context):
-    output = {
-        "eid": "tbd",
-        "mapped": []
-    }
+    output = []
     for record in event["Records"]:
         message_id = record["messageId"]
-        output["mapped"].append({
+        output.append({
             "message_id": message_id
         })
         body = json.loads(record["body"])
-        eid = body["eid"]
-        output["eid"] = eid
-        batch = body["batch"]
-        for item in batch:
-            s_map.process(item)
-        s_counters.increment(eid, "mapped")
+        for item in body:
+            s_reduce.process(item)
     return output
 
 # initialization
-table_counters = os.environ["TABLE_COUNTERS"]
-table_shuffle = os.environ["TABLE_SHUFFLE"]
-s_counters = SCounter(table_counters)
-s_map = SMap(table_shuffle)
+table = os.environ["TABLE"]
+s_reduce = SReduce(table)
