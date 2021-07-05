@@ -43,4 +43,5 @@ def handler(event, context):
 
 # initialization
 queue = os.environ["QUEUE"]
+batch_size = os.environ["BATCHSIZE"]
 ingest = Ingest(queue)

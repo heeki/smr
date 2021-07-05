@@ -8,9 +8,9 @@ Globals:
     Timeout: 60
     Tracing: Active
 Parameters:
-  pName:
-    Type: String
   pBucket:
+    Type: String
+  pBatchSize:
     Type: String
 Resources:
   # SQS
@@ -90,6 +90,7 @@ Resources:
       Environment:
         Variables:
           QUEUE: !Ref IngestQ
+          BATCHSIZE: !Ref pBatchSize
       Layers:
         - !Sub 'arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14'
   FnLogGroup:
