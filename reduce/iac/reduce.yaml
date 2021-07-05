@@ -4,9 +4,11 @@ Transform: AWS::Serverless-2016-10-31
 Globals:
   Function:
     Runtime: python3.8
-    MemorySize: 1024
+    MemorySize: 128
     Timeout: 60
     Tracing: Active
+    Layers:
+      - !Sub 'arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14'
 Parameters:
   pCountersArn:
     Type: String
@@ -15,6 +17,10 @@ Parameters:
   pAslBucket:
     Type: String
   pAslKey:
+    Type: String
+  pPackage:
+    Type: String
+  pShuffleBucket:
     Type: String
 Resources:
   # Lambda
@@ -60,18 +66,29 @@ Resources:
                 Resource:
                   - !Ref pCountersArn
                   - !Ref pShuffleArn
+        - PolicyName: s3
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:Get*
+                  - s3:Put*
+                Resource:
+                  - !Sub 'arn:aws:s3:::${pShuffleBucket}'
   FnGate:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: ../src
       Handler: fn_gate.handler
       Role: !GetAtt FnRole.Arn
-      Layers:
-        - !Sub 'arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14'
       Environment:
         Variables:
           TABLE_COUNTERS: !Select [1, !Split ["/", !Ref pCountersArn]]
           TABLE_SHUFFLE: !Select [1, !Split ["/", !Ref pShuffleArn]]
+          BUCKET_SHUFFLE: !Ref pShuffleBucket
+      Layers:
+        - !Ref pPackage
   FnGateLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -82,11 +99,13 @@ Resources:
       CodeUri: ../src
       Handler: fn_reduce.handler
       Role: !GetAtt FnRole.Arn
-      Layers:
-        - !Sub 'arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14'
       Environment:
         Variables:
+          TABLE_COUNTERS: !Select [1, !Split ["/", !Ref pCountersArn]]
           TABLE_SHUFFLE: !Select [1, !Split ["/", !Ref pShuffleArn]]
+          BUCKET_SHUFFLE: !Ref pShuffleBucket
+      Layers:
+        - !Ref pPackage
   FnReduceLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:

@@ -1,5 +1,6 @@
 import json
 import os
+from lib.s_counter import SCounter
 from lib.s_reduce import SReduce
 
 # helper functions
@@ -31,10 +32,20 @@ def get_method(event):
 
 # lambda invoker handler
 def handler(event, context):
-    # perform reduce logic
+    print(json.dumps(event))
     output = []
-    return output
+    if "mapped" in event:
+        mapped = event["mapped"]
+    else:
+        mapped = []
+    for item in mapped:
+        response = s_reduce.process(item)
+        output.append(response)
+    return sum(output)
 
 # initialization
+table_counters = os.environ["TABLE_COUNTERS"]
 table_shuffle = os.environ["TABLE_SHUFFLE"]
-s_reduce = SReduce(table_shuffle)
+bucket_shuffle = os.environ["BUCKET_SHUFFLE"]
+s_counter = SCounter(table_counters)
+s_reduce = SReduce(table_shuffle, bucket_shuffle)

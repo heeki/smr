@@ -1,0 +1,20 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: SMR reduce layer
+Transform: AWS::Serverless-2016-10-31
+Globals:
+  Function:
+    Runtime: python3.8
+    MemorySize: 1024
+    Timeout: 60
+    Tracing: Active
+Resources:
+  Package:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      CompatibleRuntimes:
+        - python3.8
+      ContentUri: ../src
+      RetentionPolicy: Retain
+Outputs:
+  outPackage:
+    Value: !Ref Package

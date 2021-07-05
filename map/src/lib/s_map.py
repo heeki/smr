@@ -13,10 +13,20 @@ class DateTimeEncoder(json.JSONEncoder):
 
 # main class
 class SMap:
-    def __init__(self, table):
+    def __init__(self, table, bucket):
         self.session = boto3.session.Session()
-        self.cl_s3 = self.session.client("dynamodb")
+        self.cl_ddb = self.session.client("dynamodb")
+        self.cl_s3 = self.session.client("s3")
         self.table = table
+        self.bucket = bucket
 
-    def process(self, item):
+    def process(self, eid, item):
         print(json.dumps(item))
+        okey = "{}/{}.json".format(eid, uuid.uuid4())
+        response = self.cl_s3.put_object(
+            Bucket=self.bucket,
+            Body=json.dumps(item),
+            Key=okey
+        )
+        print(response)
+        return okey

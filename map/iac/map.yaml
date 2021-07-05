@@ -4,17 +4,24 @@ Transform: AWS::Serverless-2016-10-31
 Globals:
   Function:
     Runtime: python3.8
-    MemorySize: 1024
+    MemorySize: 128
     Timeout: 60
     Tracing: Active
+    Layers:
+      - !Sub 'arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14'
 Parameters:
   pQueueArn:
     Type: String
   pCountersArn:
     Type: String
+  pPackage:
+    Type: String
 Resources:
+  # S3
+  ShuffleBucket:
+    Type: AWS::S3::Bucket
   # DynamoDB
-  Shuffle:
+  ShuffleTable:
     Type: AWS::DynamoDB::Table
     Properties:
       AttributeDefinitions:
@@ -77,19 +84,30 @@ Resources:
                   - dynamodb:UpdateItem
                 Resource:
                   - !Ref pCountersArn
-                  - !GetAtt Shuffle.Arn
+                  - !GetAtt ShuffleTable.Arn
+        - PolicyName: s3
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:Get*
+                  - s3:Put*
+                Resource:
+                  - !Sub '${ShuffleBucket.Arn}/*'
   Fn:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: ../src
       Handler: fn.handler
       Role: !GetAtt FnRole.Arn
-      Layers:
-        - !Sub 'arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14'
       Environment:
         Variables:
           TABLE_COUNTERS: !Select [1, !Split ["/", !Ref pCountersArn]]
-          TABLE_SHUFFLE: !Ref Shuffle
+          TABLE_SHUFFLE: !Ref ShuffleTable
+          BUCKET_SHUFFLE: !Ref ShuffleBucket
+      Layers:
+        - !Ref pPackage
   FnLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -105,5 +123,7 @@ Resources:
 Outputs:
   outFn:
     Value: !Ref Fn
-  outShuffle:
-    Value: !Ref Shuffle
+  outShuffleBucket:
+    Value: !Ref ShuffleBucket
+  outShuffleTable:
+    Value: !Ref ShuffleTable

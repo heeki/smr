@@ -4,15 +4,19 @@ Transform: AWS::Serverless-2016-10-31
 Globals:
   Function:
     Runtime: python3.8
-    MemorySize: 1024
+    MemorySize: 128
     Timeout: 60
     Tracing: Active
+    Layers:
+      - !Sub 'arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14'
 Parameters:
   pBucket:
     Type: String
   pBatchSize:
     Type: String
   pLimit:
+    Type: String
+  pPackage:
     Type: String
 Resources:
   # DynamoDB
@@ -120,7 +124,8 @@ Resources:
           BATCHSIZE: !Ref pBatchSize
           LIMIT: !Ref pLimit
       Layers:
-        - !Sub 'arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14'
+        - !Ref pPackage
+      MemorySize: 1024
   FnLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:

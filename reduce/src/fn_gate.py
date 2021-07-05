@@ -33,20 +33,23 @@ def get_method(event):
 # lambda invoker handler
 def handler(event, context):
     eid = event["eid"]
-    # c_ingested = s_counter.get(eid, "ingested")
-    # c_mapped = s_counter.get(eid, "mapped")
+    if "mapped" in event:
+        mapped = event["mapped"]
+    else:
+        mapped = []
     is_ready = s_counter.check_ready(eid)
     output = {
         "eid": eid,
-        # "ingested": c_ingested,
-        # "mapped": c_mapped
-        "is_ready": is_ready
+        "is_ready": is_ready,
     }
+    if is_ready:
+        output["mapped"] = mapped
     print(json.dumps(output))
     return output
 
 # initialization
 table_counters = os.environ["TABLE_COUNTERS"]
 table_shuffle = os.environ["TABLE_SHUFFLE"]
+bucket_shuffle = os.environ["BUCKET_SHUFFLE"]
 s_counter = SCounter(table_counters)
-s_reduce = SReduce(table_shuffle)
+s_reduce = SReduce(table_shuffle, bucket_shuffle)
