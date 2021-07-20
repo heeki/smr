@@ -2,6 +2,8 @@ import boto3
 import csv
 import json
 import uuid
+from aws_xray_sdk.core import xray_recorder
+# from aws_xray_sdk.core import patch_all
 from datetime import datetime
 
 # helper class
@@ -13,57 +15,102 @@ class DateTimeEncoder(json.JSONEncoder):
 
 # main class
 class SIngest:
-    def __init__(self, queue):
+    def __init__(self, queue, batch_size=100, batch_limit=1):
+        # boto3 clients
         self.session = boto3.session.Session()
         self.cl_s3 = self.session.client("s3")
         self.cl_sqs = self.session.client("sqs")
+        # parameters
         self.queue = queue
+        self.batch_size = batch_size
+        self.batch_limit = batch_limit
+        # internal data
         self.group_id = str(uuid.uuid4())
+        self.messages = []
+        self.batches = []
+        self.i_messages = 0
+        self.i_batches = 0
 
+    # get data file from s3
     def get_object(self, bucket, key):
+        ts_start = datetime.now()
         response = self.cl_s3.get_object(
             Bucket=bucket,
             Key=key
         )
         # TODO: convert from reading entire file to handle streaming body
-        return response["Body"].read().decode("utf-8").split("\n")
+        output = response["Body"].read().decode("utf-8").split("\n")
+        ts_end = datetime.now()
+        ts_duration = int((ts_end - ts_start).microseconds/1000)
+        print(json.dumps({
+            "bucket": bucket,
+            "key": key,
+            "ts_start": ts_start,
+            "ts_end": ts_end,
+            "duration_ms": ts_duration
+        }, cls=DateTimeEncoder))
+        return output
 
-    def send_message(self, message):
-        message_id = str(uuid.uuid4())
-        response = self.cl_sqs.send_message(
+    # enqueue message into batch
+    def enqueue_message(self, message):
+        self.messages.append(message)
+        self.i_messages += 1
+        # log processing status
+        if self.i_messages % 10000 == 0:
+            print(json.dumps({
+                "ts": datetime.now(),
+                "processed": self.i_messages
+            }, cls=DateTimeEncoder))
+        # if batch is full, enqueue the batch and reset it
+        if len(self.messages) == self.batch_size:
+            self.enqueue_batch()
+            self.messages = []
+
+    # enqueue batch into entries for bulk send to sqs
+    def enqueue_batch(self):
+        self.batches.append({
+            "Id": str(uuid.uuid4()),
+            "MessageBody": json.dumps(self.messages)
+        })
+        self.i_batches += 1
+        if len(self.batches) == 4:
+            self.send_message_batch()
+            self.batches = []
+
+    # bulk send to sqs
+    def send_message_batch(self):
+        response = self.cl_sqs.send_message_batch(
             QueueUrl=self.queue,
-            MessageBody=message,
-            MessageDeduplicationId=message_id,
-            MessageGroupId=self.group_id
+            Entries=self.batches
         )
         return response
 
-    def process(self, eid, bucket, key, batch_size=100, limit=1):
+    # process data file, emit to sqs
+    def process(self, eid, bucket, key):
+        # get data file
+        subsegment = xray_recorder.begin_subsegment("S3 GetObject")
+        subsegment.put_annotation("ExecutionId", eid)
         body = self.get_object(bucket, key)
-        batch = []
-        i_batch = 0
-        i_limit = 0
+        xray_recorder.end_subsegment()
+        # process data file
+        subsegment = xray_recorder.begin_subsegment("SQS SendMessages")
+        subsegment.put_annotation("ExecutionId", eid)
         for line in body:
             reader = csv.reader([line], delimiter=",")
             parsed = list(reader)[0]
-            if parsed[0] != "Year":
-                batch.append(parsed)
-                i_batch += 1
-            if i_batch == batch_size:
-                output = {
-                    "eid": eid,
-                    "batch": batch
-                }
-                self.send_message(json.dumps(output))
-                batch = []
-                i_batch = 0
-                i_limit += 1
-                if i_limit == limit:
-                    break
-        # send last of the data if under the limit
-        if i_limit < limit:
-            output = {
-                "eid": eid,
-                "batch": batch
-            }
-            self.send_message(json.dumps(output))
+            # skip empty lines and the header, otherwise add message to batch
+            if len(parsed) == 0:
+                continue
+            if parsed[0] == "Year":
+                continue
+            self.enqueue_message(parsed)
+            # check if exceeded batch limit
+            if self.batch_limit > 0 and self.i_batches == self.batch_limit:
+                break
+        # if needed, send last of the data
+        if len(self.messages) > 0:
+            self.enqueue_batch()
+        if len(self.batches) < 4:
+            self.send_message_batch()
+        xray_recorder.end_subsegment()
+        return self.i_messages

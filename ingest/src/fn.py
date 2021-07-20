@@ -1,4 +1,7 @@
+import json
 import os
+# from aws_xray_sdk.core import xray_recorder
+# from aws_xray_sdk.core import patch_all
 from lib.s_counter import SCounter
 from lib.s_ingest import SIngest
 
@@ -43,18 +46,27 @@ def handler(event, context):
         else:
             bucket = record["bucket"]
             key = record["key"]
-        s_ingest.process(eid, bucket, key, batch_size, limit)
-        s_counters.increment(eid, "ingested")
+        processed = s_ingest.process(eid, bucket, key)
+        s_counters.increment(eid, "ingested", processed)
         output["ingested"].append({
             "bucket": bucket,
-            "key": key
+            "key": key,
+            "processed": processed
         })
+        print(json.dumps(output))
     return output
 
-# initialization
-table_counters = os.environ["TABLE_COUNTERS"]
+# initialization: xray
+# patch_all()
+
+# initialization: global variables
+batch_size = int(os.environ["BATCH_SIZE"])
+batch_limit = int(os.environ["BATCH_LIMIT"])
+
+# initialization: sqs
 queue = os.environ["QUEUE"]
-batch_size = int(os.environ["BATCHSIZE"])
-limit = int(os.environ["LIMIT"])
-s_ingest = SIngest(queue)
+s_ingest = SIngest(queue, batch_size=batch_size, batch_limit=batch_limit)
+
+# initialization: ddb
+table_counters = os.environ["TABLE_COUNTERS"]
 s_counters = SCounter(table_counters)

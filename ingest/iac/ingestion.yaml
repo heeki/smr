@@ -5,16 +5,17 @@ Globals:
   Function:
     Runtime: python3.8
     MemorySize: 128
-    Timeout: 60
+    Timeout: 900
     Tracing: Active
     Layers:
       - !Sub 'arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14'
+      - !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:xray-python38:2'
 Parameters:
   pBucket:
     Type: String
   pBatchSize:
     Type: String
-  pLimit:
+  pBatchLimit:
     Type: String
   pPackage:
     Type: String
@@ -34,11 +35,11 @@ Resources:
   IngestQ:
     Type: AWS::SQS::Queue
     Properties:
-      ContentBasedDeduplication: true
-      DeduplicationScope: queue
+      # ContentBasedDeduplication: true
+      # DeduplicationScope: queue
       DelaySeconds: 0
-      FifoQueue: true
-      FifoThroughputLimit: perQueue
+      # FifoQueue: true
+      # FifoThroughputLimit: perQueue
       MessageRetentionPeriod: 600
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt DLQ.Arn
@@ -47,11 +48,11 @@ Resources:
   DLQ:
     Type: AWS::SQS::Queue
     Properties:
-      ContentBasedDeduplication: true
-      DeduplicationScope: queue
+      # ContentBasedDeduplication: true
+      # DeduplicationScope: queue
       DelaySeconds: 0
-      FifoQueue: true
-      FifoThroughputLimit: perQueue
+      # FifoQueue: true
+      # FifoThroughputLimit: perQueue
       MessageRetentionPeriod: 300
       VisibilityTimeout: 60
   # Lambda
@@ -80,6 +81,18 @@ Resources:
                   - logs:PutLogEvents
                   - logs:DescribeLogStreams
                 Resource: 'arn:aws:logs:*:*:log-group:*:*'
+        - PolicyName: xray
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                  - xray:GetSamplingRules
+                  - xray:GetSamplingTargets
+                  - xray:GetSamplingStatisticSummaries
+                Resource: '*'
         - PolicyName: s3
           PolicyDocument:
             Version: '2012-10-17'
@@ -121,11 +134,12 @@ Resources:
         Variables:
           TABLE_COUNTERS: !Ref Counters
           QUEUE: !Ref IngestQ
-          BATCHSIZE: !Ref pBatchSize
-          LIMIT: !Ref pLimit
-      Layers:
-        - !Ref pPackage
-      MemorySize: 1024
+          BATCH_SIZE: !Ref pBatchSize
+          BATCH_LIMIT: !Ref pBatchLimit
+      # Layers:
+      #   - !Ref pPackage
+      MemorySize: 2048
+      Tracing: Active
   FnLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
