@@ -1,4 +1,5 @@
 import boto3
+import botocore
 import csv
 import json
 import uuid
@@ -34,17 +35,23 @@ class SIngest:
     # get data file from s3
     def get_object(self, bucket, key):
         ts_start = datetime.now()
+        print(json.dumps({
+            "bucket": bucket,
+            "key": key
+        }))
         response = self.cl_s3.get_object(
             Bucket=bucket,
             Key=key
         )
         # TODO: convert from reading entire file to handle streaming body
-        output = response["Body"].read().decode("utf-8").split("\n")
+        try:
+            output = response["Body"].read().decode("utf-8").split("\n")
+        except Exception as e:
+            print(e)
+            output = response["Body"].read().decode("latin-1").split("\n")
         ts_end = datetime.now()
         ts_duration = int((ts_end - ts_start).microseconds/1000)
         print(json.dumps({
-            "bucket": bucket,
-            "key": key,
             "ts_start": ts_start,
             "ts_end": ts_end,
             "duration_ms": ts_duration
@@ -79,10 +86,27 @@ class SIngest:
 
     # bulk send to sqs
     def send_message_batch(self):
-        response = self.cl_sqs.send_message_batch(
-            QueueUrl=self.queue,
-            Entries=self.batches
-        )
+        try:
+            response = self.cl_sqs.send_message_batch(
+                QueueUrl=self.queue,
+                Entries=self.batches
+            )
+        except botocore.exceptions.ClientError as e:
+            print(e)
+            half = len(self.batches)//2
+            a = self.batches[:half]
+            b = self.batches[half:]
+            response = []
+            if len(a) > 0:
+                response.append(self.cl_sqs.send_message_batch(
+                    QueueUrl=self.queue,
+                    Entries=a
+                ))
+            if len(b) > 0:
+                response.append(self.cl_sqs.send_message_batch(
+                    QueueUrl=self.queue,
+                    Entries=b
+                ))
         return response
 
     # process data file, emit to sqs

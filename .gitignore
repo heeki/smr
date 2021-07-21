@@ -1,4 +1,5 @@
 .vscode
+architecture/*.pdf
 */etc
 */iac/*_output.yaml
 */tmp
