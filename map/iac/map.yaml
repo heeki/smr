@@ -25,12 +25,16 @@ Resources:
     Type: AWS::DynamoDB::Table
     Properties:
       AttributeDefinitions:
-        - AttributeName: filter
+        - AttributeName: eid
+          AttributeType: S
+        - AttributeName: iid
           AttributeType: S
       BillingMode: PAY_PER_REQUEST
       KeySchema:
-        - AttributeName: filter
+        - AttributeName: eid
           KeyType: HASH
+        - AttributeName: iid
+          KeyType: RANGE
   # Lambda
   FnRole:
     Type: AWS::IAM::Role
@@ -106,8 +110,8 @@ Resources:
           TABLE_COUNTERS: !Select [1, !Split ["/", !Ref pCountersArn]]
           TABLE_SHUFFLE: !Ref ShuffleTable
           BUCKET_SHUFFLE: !Ref ShuffleBucket
-      Layers:
-        - !Ref pPackage
+      # Layers:
+      #   - !Ref pPackage
   FnLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:

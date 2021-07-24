@@ -59,7 +59,7 @@ class SIngest:
         return output
 
     # enqueue message into batch
-    def enqueue_message(self, message):
+    def enqueue_message(self, eid, message):
         self.messages.append(message)
         self.i_messages += 1
         # log processing status
@@ -70,14 +70,17 @@ class SIngest:
             }, cls=DateTimeEncoder))
         # if batch is full, enqueue the batch and reset it
         if len(self.messages) == self.batch_size:
-            self.enqueue_batch()
+            self.enqueue_batch(eid)
             self.messages = []
 
     # enqueue batch into entries for bulk send to sqs
-    def enqueue_batch(self):
+    def enqueue_batch(self, eid):
         self.batches.append({
             "Id": str(uuid.uuid4()),
-            "MessageBody": json.dumps(self.messages)
+            "MessageBody": json.dumps({
+                "eid": eid,
+                "batch": self.messages
+            })
         })
         self.i_batches += 1
         if len(self.batches) == 4:
@@ -127,7 +130,7 @@ class SIngest:
                 continue
             if parsed[0] == "Year":
                 continue
-            self.enqueue_message(parsed)
+            self.enqueue_message(eid, parsed)
             # check if exceeded batch limit
             if self.batch_limit > 0 and self.i_batches == self.batch_limit:
                 break

@@ -32,7 +32,7 @@ def get_method(event):
 
 # lambda invoker handler
 def handler(event, context):
-    print(json.dumps(event))
+    # print(json.dumps(event))
     output = {
         "mapped": []
     }
@@ -41,10 +41,8 @@ def handler(event, context):
         eid = body["eid"]
         batch = body["batch"]
         output["eid"] = eid
-        for item in batch:
-            okey = s_map.process(eid, item)
-            output["mapped"].append(okey)
-        s_counters.increment(eid, "mapped")
+        output["mapped"].extend(s_map.process(eid, batch))
+        # s_counters.increment(eid, "mapped")
     return output
 
 # initialization
