@@ -1,4 +1,5 @@
 import boto3
+import botocore
 import decimal
 import json
 
@@ -18,18 +19,28 @@ class SCounter:
         self.cl_ddb = self.session.client("dynamodb")
         self.table = table
 
-    def increment(self, eid, attr):
-        response = self.cl_ddb.update_item(
-            TableName=self.table,
-            Key={
-                "id": {"S": eid}
-            },
-            ExpressionAttributeValues={
-                ":increment": { "N": "1" }
-            },
-            UpdateExpression="SET {} = {} + :increment".format(attr, attr),
-            ReturnValues="UPDATED_NEW"
-        )
+
+    def increment(self, eid, attr, incr=1):
+        try:
+            response = self.cl_ddb.update_item(
+                TableName=self.table,
+                Key={
+                    "id": {"S": eid}
+                },
+                ExpressionAttributeNames={
+                    "#attr": attr
+                },
+                ExpressionAttributeValues={
+                    ":increment": {"N": str(incr)},
+                    ":zero": {"N": "0"}
+                },
+                UpdateExpression="SET #attr = if_not_exists(#attr, :zero) + :increment",
+                ReturnValues="ALL_NEW"
+            )
+        except botocore.exceptions.ClientError as e:
+            response = {
+                "error": e
+            }
         return response
 
     def get(self, eid, attr):

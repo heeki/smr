@@ -35,25 +35,18 @@ def get_method(event):
 # lambda invoker handler
 def handler(event, context):
     eid = event["eid"]
+    bucket = event["bucket"]
+    okey = event["key"]
+    s_ingest = SIngest(queue, batch_size=batch_size, batch_limit=batch_limit)
+    processed = s_ingest.process(eid, bucket, okey)
+    s_counters.increment(eid, "ingested", processed)
     output = {
         "eid": eid,
-        "ingested": []
+        "bucket": bucket,
+        "key": okey,
+        "processed": processed
     }
-    for record in event["Records"]:
-        if "s3" in record:
-            bucket = record["s3"]["bucket"]["name"]
-            key = record["s3"]["object"]["key"]
-        else:
-            bucket = record["bucket"]
-            key = record["key"]
-        processed = s_ingest.process(eid, bucket, key)
-        s_counters.increment(eid, "ingested", processed)
-        output["ingested"].append({
-            "bucket": bucket,
-            "key": key,
-            "processed": processed
-        })
-        print(json.dumps(output))
+    print(json.dumps(output))
     return output
 
 # initialization: xray
@@ -65,7 +58,6 @@ batch_limit = int(os.environ["BATCH_LIMIT"])
 
 # initialization: sqs
 queue = os.environ["QUEUE"]
-s_ingest = SIngest(queue, batch_size=batch_size, batch_limit=batch_limit)
 
 # initialization: ddb
 table_counters = os.environ["TABLE_COUNTERS"]

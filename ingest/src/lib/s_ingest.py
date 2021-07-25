@@ -136,7 +136,7 @@ class SIngest:
                 break
         # if needed, send last of the data
         if len(self.messages) > 0:
-            self.enqueue_batch()
+            self.enqueue_batch(eid)
         if len(self.batches) < 4:
             self.send_message_batch()
         xray_recorder.end_subsegment()

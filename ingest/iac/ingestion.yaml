@@ -9,7 +9,8 @@ Globals:
     Tracing: Active
     Layers:
       - !Sub 'arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14'
-      - !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:xray-python38:2'
+      # NOTE: this is causing SAM local issues, need to hard code the account id
+      - !Sub 'arn:aws:lambda:${AWS::Region}:546275881527:layer:xray-python38:2'
 Parameters:
   pBucket:
     Type: String
@@ -136,8 +137,8 @@ Resources:
           QUEUE: !Ref IngestQ
           BATCH_SIZE: !Ref pBatchSize
           BATCH_LIMIT: !Ref pBatchLimit
-      # Layers:
-      #   - !Ref pPackage
+      Layers:
+        - !Ref pPackage
       MemorySize: 2048
       Tracing: Active
   FnLogGroup:

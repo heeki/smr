@@ -2,40 +2,20 @@
     "StartAt": "Ingest",
     "States": {
         "Ingest": {
-            "Type": "Task",
-            "Resource": "${FnIngest}",
-            "OutputPath": "$.",
-            "Next": "Map"
-        },
-        "Map": {
             "Type": "Map",
+            "ItemsPath": "$.input",
             "Iterator": {
-                "StartAt": "SMap",
+                "StartAt": "SIngest",
                 "States": {
-                    "SMap": {
+                    "SIngest": {
                         "Type": "Task",
-                        "Resource": "${FnMap}",
-                        "OutputPath": "$.",
+                        "Resource": "${FnIngest}",
+                        "OutputPath": "$",
                         "End": true
                     }
                 }
             },
-            "Next": "Reduce"
-        },
-        "Reduce": {
-            "Type": "Map",
-            "End": true,
-            "Iterator": {
-                "StartAt": "SReduce",
-                "States": {
-                    "SReduce": {
-                        "Type": "Task",
-                        "Resource": "${FnReduce}",
-                        "OutputPath": "$.",
-                        "End": true
-                    }
-                }
-            }
+            "End": true
         }
     }
 }

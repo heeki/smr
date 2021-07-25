@@ -110,8 +110,8 @@ Resources:
           TABLE_COUNTERS: !Select [1, !Split ["/", !Ref pCountersArn]]
           TABLE_SHUFFLE: !Ref ShuffleTable
           BUCKET_SHUFFLE: !Ref ShuffleBucket
-      # Layers:
-      #   - !Ref pPackage
+      Layers:
+        - !Ref pPackage
   FnLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
