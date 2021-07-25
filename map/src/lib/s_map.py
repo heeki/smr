@@ -42,6 +42,7 @@ class SMap:
 
     def process(self, eid, batch):
         payload = {}
+        i_messages = 0
         for item in batch:
             pk = item[6]
             if pk not in payload:
@@ -50,11 +51,15 @@ class SMap:
             projection = [5,6,10,11,17,25,36]
             projected = [item[i] for i in projection]
             payload[pk].append(projected)
-        output = []
+            i_messages += 1
+        output = {
+            "mapped": [],
+            "processed": i_messages
+        }
         for pk in payload:
             okey = "{}/{}/{}.json".format(eid, pk, uuid.uuid4())
             response = self.write_s3(okey, payload[pk])
             # response = self.write_ddb(eid, pk, projected)
             if response == 200:
-                output.append(okey)
+                output["mapped"].append(okey)
         return output

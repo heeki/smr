@@ -32,7 +32,7 @@ def get_method(event):
 
 # lambda invoker handler
 def handler(event, context):
-    # print(json.dumps(event))
+    print(json.dumps(event))
     output = {
         "mapped": []
     }
@@ -40,14 +40,15 @@ def handler(event, context):
         body = json.loads(record["body"])
         eid = body["eid"]
         batch = body["batch"]
+        response = s_map.process(eid, batch)
         output["eid"] = eid
-        output["mapped"].extend(s_map.process(eid, batch))
-        # s_counters.increment(eid, "mapped")
+        output["mapped"].extend(response["mapped"])
+        s_counters.increment(eid, "mapped", response["processed"])
     return output
 
 # initialization
 table_counters = os.environ["TABLE_COUNTERS"]
 table_shuffle = os.environ["TABLE_SHUFFLE"]
 bucket_shuffle = os.environ["BUCKET_SHUFFLE"]
-s_counters = SCounter(table_counters)
 s_map = SMap(table_shuffle, bucket_shuffle)
+s_counters = SCounter(table_counters)
