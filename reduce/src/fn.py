@@ -38,10 +38,16 @@ def handler(event, context):
         mapped = event["mapped"]
     else:
         mapped = []
+    items = {}
     for item in mapped:
-        response = s_reduce.process(item)
-        output.append(response)
-    return sum(output)
+        (eid, pk, iid) = item.split(".")[0].split("/")
+        if eid not in items:
+            items[eid] = {}
+        if pk not in items[eid]:
+            items[eid][pk] = []
+        items[eid][pk].append(iid)
+    output = s_reduce.process(items)
+    return output
 
 # initialization
 table_counters = os.environ["TABLE_COUNTERS"]
