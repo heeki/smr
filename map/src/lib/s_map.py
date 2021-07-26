@@ -1,7 +1,7 @@
 import boto3
-import csv
 import json
 import uuid
+from aws_xray_sdk.core import xray_recorder
 from datetime import datetime
 
 # helper class
@@ -43,6 +43,8 @@ class SMap:
     def process(self, eid, batch):
         payload = {}
         i_messages = 0
+        subsegment = xray_recorder.begin_subsegment("Map Phase")
+        subsegment.put_annotation("ExecutionId", eid)
         for item in batch:
             pk = item[6]
             if pk not in payload:
@@ -62,4 +64,5 @@ class SMap:
             # response = self.write_ddb(eid, pk, projected)
             if response == 200:
                 output["mapped"].append(okey)
+        xray_recorder.end_subsegment()
         return output

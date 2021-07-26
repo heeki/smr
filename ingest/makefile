@@ -6,10 +6,10 @@ ingest.package:
 ingest.deploy:
 	sam deploy -t ${INGEST_OUTPUT} --stack-name ${INGEST_STACK} --parameter-overrides ${INGEST_PARAMS} --capabilities CAPABILITY_NAMED_IAM
 ingest.local.invoke:
-	sam local invoke -t ${INGEST_TEMPLATE} --parameter-overrides ${INGEST_PARAMS} --env-vars etc/envvars.json -e etc/event.json Fn | jq
-ingest.local.api:
-	sam local start-api -t ${INGEST_TEMPLATE} --parameter-overrides ${INGEST_PARAMS} --env-vars etc/envvars.json
+	sam local invoke -t ${INGEST_TEMPLATE} --parameter-overrides ${INGEST_PARAMS} --env-vars etc/envvars.json -e etc/event.json FnIngest | jq
 ingest.invoke:
 	aws --profile ${PROFILE} lambda invoke --function-name ${OUT_FN} --invocation-type RequestResponse --payload file://etc/event.json --cli-binary-format raw-in-base64-out --log-type Tail tmp/fn.json | jq "." > tmp/response.json
 	cat tmp/response.json | jq -r ".LogResult" | base64 --decode
 	cat tmp/fn.json | jq
+prep.local.invoke:
+	sam local invoke -t ${INGEST_TEMPLATE} --parameter-overrides ${INGEST_PARAMS} --env-vars etc/envvars.json -e etc/event_ingest_map.json FnPrep | jq

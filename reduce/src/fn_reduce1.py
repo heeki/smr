@@ -1,6 +1,5 @@
 import json
 import os
-from lib.s_counter import SCounter
 from lib.s_reduce import SReduce
 
 # helper functions
@@ -33,25 +32,11 @@ def get_method(event):
 # lambda invoker handler
 def handler(event, context):
     print(json.dumps(event))
-    output = []
-    if "mapped" in event:
-        mapped = event["mapped"]
-    else:
-        mapped = []
-    items = {}
-    for item in mapped:
-        (eid, pk, iid) = item.split(".")[0].split("/")
-        if eid not in items:
-            items[eid] = {}
-        if pk not in items[eid]:
-            items[eid][pk] = []
-        items[eid][pk].append(iid)
-    output = s_reduce.process(items)
+    mapped = s_reduce.list_objects(event)
+    output = s_reduce.process(mapped)
     return output
 
 # initialization
-table_counters = os.environ["TABLE_COUNTERS"]
 table_shuffle = os.environ["TABLE_SHUFFLE"]
 bucket_shuffle = os.environ["BUCKET_SHUFFLE"]
-s_counter = SCounter(table_counters)
 s_reduce = SReduce(table_shuffle, bucket_shuffle)

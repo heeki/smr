@@ -9,6 +9,8 @@ Globals:
     Tracing: Active
     Layers:
       - !Sub 'arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14'
+      # NOTE: this is causing SAM local issues, need to hard code the account id
+      - !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:xray-python38:2'
 Parameters:
   pCountersArn:
     Type: String
@@ -66,7 +68,16 @@ Resources:
                 Resource:
                   - !Ref pCountersArn
                   - !Ref pShuffleArn
-        - PolicyName: s3
+        - PolicyName: s3-bucket
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:List*
+                Resource:
+                  - !Sub 'arn:aws:s3:::${pShuffleBucket}'
+        - PolicyName: s3-object
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -75,7 +86,7 @@ Resources:
                   - s3:Get*
                   - s3:Put*
                 Resource:
-                  - !Sub 'arn:aws:s3:::${pShuffleBucket}'
+                  - !Sub 'arn:aws:s3:::${pShuffleBucket}/*'
   FnGate:
     Type: AWS::Serverless::Function
     Properties:
@@ -93,23 +104,37 @@ Resources:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub '/aws/lambda/${FnGate}'
-  FnReduce:
+  FnReduce1:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: ../src
-      Handler: fn.handler
+      Handler: fn_reduce1.handler
       Role: !GetAtt FnRole.Arn
       Environment:
         Variables:
-          TABLE_COUNTERS: !Select [1, !Split ["/", !Ref pCountersArn]]
           TABLE_SHUFFLE: !Select [1, !Split ["/", !Ref pShuffleArn]]
           BUCKET_SHUFFLE: !Ref pShuffleBucket
-      Layers:
-        - !Ref pPackage
-  FnReduceLogGroup:
+      MemorySize: 2048
+      Timeout: 300
+  FnReduce1LogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub '/aws/lambda/${FnReduce}'
+      LogGroupName: !Sub '/aws/lambda/${FnReduce1}'
+      RetentionInDays: 7
+  FnReduce2:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../src
+      Handler: fn_reduce2.handler
+      Role: !GetAtt FnRole.Arn
+      Environment:
+        Variables:
+          TABLE_SHUFFLE: !Select [1, !Split ["/", !Ref pShuffleArn]]
+          BUCKET_SHUFFLE: !Ref pShuffleBucket
+  FnReduce2LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${FnReduce2}'
       RetentionInDays: 7
   # Step Function
   SFnRole:
@@ -150,7 +175,8 @@ Resources:
                   - lambda:InvokeFunction
                 Resource:
                   - !GetAtt FnGate.Arn
-                  - !GetAtt FnReduce.Arn
+                  - !GetAtt FnReduce1.Arn
+                  - !GetAtt FnReduce2.Arn
   SFn:
     Type: AWS::StepFunctions::StateMachine
     Properties:
@@ -159,7 +185,8 @@ Resources:
           Key: !Ref pAslKey
         DefinitionSubstitutions:
           FnGate: !GetAtt FnGate.Arn
-          FnReduce: !GetAtt FnReduce.Arn
+          FnReduce1: !GetAtt FnReduce1.Arn
+          FnReduce2: !GetAtt FnReduce2.Arn
         LoggingConfiguration:
           Destinations:
             - CloudWatchLogsLogGroup:
@@ -178,7 +205,7 @@ Resources:
 Outputs:
   outFnGate:
     Value: !Ref FnGate
-  outFnReduce:
-    Value: !Ref FnReduce
+  outFnReduce1:
+    Value: !Ref FnReduce1
   outSFn:
     Value: !GetAtt SFn.Arn

@@ -1,13 +1,13 @@
 {
-    "StartAt": "Ingest",
+    "StartAt": "MIngest",
     "States": {
-        "Ingest": {
+        "MIngest": {
             "Type": "Map",
             "ItemsPath": "$.input",
             "Iterator": {
-                "StartAt": "SIngest",
+                "StartAt": "IngestForMap",
                 "States": {
-                    "SIngest": {
+                    "Ingest": {
                         "Type": "Task",
                         "Resource": "${FnIngest}",
                         "OutputPath": "$",
@@ -15,6 +15,61 @@
                     }
                 }
             },
+            "Next": "ReducePrep"
+        },
+        "ReducePrep": {
+            "Type": "Task",
+            "Resource": "${FnReducePrep}",
+            "OutputPath": "$",
+            "Next": "ReduceGate"
+        },
+        "ReduceGate": {
+            "Type": "Task",
+            "Resource": "${FnReduceGate}",
+            "OutputPath": "$",
+            "Next": "IsMapComplete"
+        },
+        "IsMapComplete": {
+            "Type": "Choice",
+            "Choices": [
+            {
+                "Variable": "$.is_ready",
+                "StringEquals": "true",
+                "Next": "MReduce"
+            },
+            {
+                "Variable": "$.is_ready",
+                "StringEquals": "false",
+                "Next": "Wait"
+            }
+            ],
+            "Default": "MReduce"
+        },
+        "MReduce": {
+            "Type": "Map",
+            "ItemsPath": "$.mapped",
+            "Iterator": {
+            "StartAt": "ReduceAggregate",
+            "States": {
+                "ReduceAggregate": {
+                "Type": "Task",
+                "Resource": "${FnReduce1}",
+                "OutputPath": "$",
+                "End": true
+                }
+            }
+            },
+            "Next": "ReduceRank"
+        },
+        "Wait": {
+            "Type": "Wait",
+            "Seconds": 30,
+            "Next": "ReduceGate"
+        },
+        "ReduceRank": {
+            "Type": "Task",
+            "Resource": "${FnReduce2}",
+            "OutputPath": "$",
             "End": true
         }
     }

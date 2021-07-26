@@ -2,8 +2,6 @@ import json
 import os
 from aws_xray_sdk.core import xray_recorder
 from aws_xray_sdk.core import patch_all
-from lib.s_counter import SCounter
-from lib.s_reduce import SReduce
 
 # helper functions
 def build_response(code, body):
@@ -34,23 +32,15 @@ def get_method(event):
 
 # lambda invoker handler
 def handler(event, context):
-    eid = event["eid"]
-    is_ready = s_counter.check_ready(eid)
     output = {
-        "eid": eid,
-        "is_ready": is_ready,
+        "processed": 0
     }
-    if is_ready:
-        output["mapped"] = s_reduce.list_prefixes(eid)
+    for item in event:
+        if "eid" not in output:
+            output["eid"] = item["eid"]
+        output["processed"] += item["processed"]
     print(json.dumps(output))
     return output
 
 # initialization: xray
 patch_all()
-
-# initialization
-table_counters = os.environ["TABLE_COUNTERS"]
-table_shuffle = os.environ["TABLE_SHUFFLE"]
-bucket_shuffle = os.environ["BUCKET_SHUFFLE"]
-s_counter = SCounter(table_counters)
-s_reduce = SReduce(table_shuffle, bucket_shuffle)

@@ -10,7 +10,7 @@ Globals:
     Layers:
       - !Sub 'arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14'
       # NOTE: this is causing SAM local issues, need to hard code the account id
-      - !Sub 'arn:aws:lambda:${AWS::Region}:546275881527:layer:xray-python38:2'
+      - !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:xray-python38:2'
 Parameters:
   pBucket:
     Type: String
@@ -125,11 +125,11 @@ Resources:
                   - sqs:ReceiveMessage
                   - sqs:SendMessage
                 Resource: !GetAtt IngestQ.Arn
-  Fn:
+  FnIngest:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: ../src
-      Handler: fn.handler
+      Handler: fn_ingest.handler
       Role: !GetAtt FnRole.Arn
       Environment:
         Variables:
@@ -140,11 +140,21 @@ Resources:
       Layers:
         - !Ref pPackage
       MemorySize: 2048
-      Tracing: Active
-  FnLogGroup:
+  FnIngestLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub '/aws/lambda/${Fn}'
+      LogGroupName: !Sub '/aws/lambda/${FnIngest}'
+      RetentionInDays: 7
+  FnPrep:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../src
+      Handler: fn_prep.handler
+      Role: !GetAtt FnRole.Arn
+  FnPrepLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${FnPrep}'
       RetentionInDays: 7
 Outputs:
   outCounters:
@@ -157,5 +167,7 @@ Outputs:
     Value: !GetAtt IngestQ.Arn
   outDLQ:
     Value: !Ref DLQ
-  outFn:
-    Value: !Ref Fn
+  outFnIngest:
+    Value: !Ref FnIngest
+  outFnPrep:
+    Value: !Ref FnPrep

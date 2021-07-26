@@ -1,19 +1,19 @@
 {
-    "StartAt": "Gate",
+    "StartAt": "ReduceGate",
     "States": {
-      "Gate": {
+      "ReduceGate": {
         "Type": "Task",
         "Resource": "${FnGate}",
         "OutputPath": "$",
-        "Next": "Choice"
+        "Next": "IsMapComplete"
       },
-      "Choice": {
+      "IsMapComplete": {
         "Type": "Choice",
         "Choices": [
           {
             "Variable": "$.is_ready",
             "StringEquals": "true",
-            "Next": "MReduce"
+            "Next": "Reduce"
           },
           {
             "Variable": "$.is_ready",
@@ -21,28 +21,34 @@
             "Next": "Wait"
           }
         ],
-        "Default": "MReduce"
+        "Default": "Reduce"
       },
-      "MReduce": {
+      "Reduce": {
         "Type": "Map",
         "ItemsPath": "$.mapped",
-        "End": true,
         "Iterator": {
-          "StartAt": "SReduce",
+          "StartAt": "ReduceAggregate",
           "States": {
-            "SReduce": {
+            "ReduceAggregate": {
               "Type": "Task",
-              "Resource": "${FnReduce}",
+              "Resource": "${FnReduce1}",
               "OutputPath": "$",
               "End": true
             }
           }
-        }
+        },
+        "Next": "ReduceRank"
       },
       "Wait": {
         "Type": "Wait",
         "Seconds": 60,
-        "Next": "Gate"
+        "Next": "ReduceGate"
+      },
+      "ReduceRank": {
+        "Type": "Task",
+        "Resource": "${FnReduce2}",
+        "OutputPath": "$",
+        "End": true
       }
     }
   }

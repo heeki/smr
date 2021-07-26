@@ -9,6 +9,8 @@ Globals:
     Tracing: Active
     Layers:
       - !Sub 'arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14'
+      # NOTE: this is causing SAM local issues, need to hard code the account id
+      - !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:xray-python38:2'
 Parameters:
   pQueueArn:
     Type: String

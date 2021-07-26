@@ -1,7 +1,7 @@
 import json
 import os
-# from aws_xray_sdk.core import xray_recorder
-# from aws_xray_sdk.core import patch_all
+from aws_xray_sdk.core import xray_recorder
+from aws_xray_sdk.core import patch_all
 from lib.s_counter import SCounter
 from lib.s_ingest import SIngest
 
@@ -48,9 +48,6 @@ def handler(event, context):
     }
     print(json.dumps(output))
     return output
-
-# initialization: xray
-# patch_all()
 
 # initialization: global variables
 batch_size = int(os.environ["BATCH_SIZE"])

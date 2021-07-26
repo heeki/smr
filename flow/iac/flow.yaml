@@ -12,9 +12,15 @@ Parameters:
     Type: String
   pIngestArn:
     Type: String
+  pPrepArn:
+    Type: String
   pMapArn:
     Type: String
-  pReduceArn:
+  pReduceGateArn:
+    Type: String
+  pReduce1Arn:
+    Type: String
+  pReduce2Arn:
     Type: String
 Resources:
   # Step Function
@@ -56,8 +62,11 @@ Resources:
                   - lambda:InvokeFunction
                 Resource:
                   - !Ref pIngestArn
+                  - !Ref pPrepArn
                   - !Ref pMapArn
-                  - !Ref pReduceArn
+                  - !Ref pReduceGateArn
+                  - !Ref pReduce1Arn
+                  - !Ref pReduce2Arn
   SFn:
     Type: AWS::StepFunctions::StateMachine
     Properties:
@@ -67,7 +76,10 @@ Resources:
         DefinitionSubstitutions:
           FnIngest: !Ref pIngestArn
           FnMap: !Ref pMapArn
-          FnReduce: !Ref pReduceArn
+          FnReducePrep: !Ref pPrepArn
+          FnReduceGate: !Ref pReduceGateArn
+          FnReduce1: !Ref pReduce1Arn
+          FnReduce2: !Ref pReduce2Arn
         LoggingConfiguration:
           Destinations:
             - CloudWatchLogsLogGroup:
