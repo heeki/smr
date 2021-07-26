@@ -7,7 +7,7 @@
             "Iterator": {
                 "StartAt": "IngestForMap",
                 "States": {
-                    "Ingest": {
+                    "IngestForMap": {
                         "Type": "Task",
                         "Resource": "${FnIngest}",
                         "OutputPath": "$",
@@ -34,12 +34,12 @@
             "Choices": [
             {
                 "Variable": "$.is_ready",
-                "StringEquals": "true",
+                "BooleanEquals": true,
                 "Next": "MReduce"
             },
             {
                 "Variable": "$.is_ready",
-                "StringEquals": "false",
+                "BooleanEquals": false,
                 "Next": "Wait"
             }
             ],
