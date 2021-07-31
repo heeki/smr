@@ -40,17 +40,46 @@ Resources:
               - sts:AssumeRole
       Path: '/service-role/'
       Policies:
-        - PolicyName: cloudwatch-logs
+        - PolicyName: cloudwatch-insights
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
+                Resource: '*'
+        - PolicyName: cloudwatch-logs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                   - logs:DescribeLogStreams
                 Resource: 'arn:aws:logs:*:*:log-group:*:*'
+        - PolicyName: xray
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                  - xray:GetSamplingRules
+                  - xray:GetSamplingTargets
+                  - xray:GetSamplingStatisticSummaries
+                Resource: '*'
+        - PolicyName: codeguru
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codeguru-profiler:ConfigureAgent
+                  - codeguru-profiler:CreateProfilingGroup
+                  - codeguru-profiler:PostAgentProfile
+                Resource: 'arn:aws:codeguru-profiler:*:*:profilingGroup/*'
         - PolicyName: dynamodb
           PolicyDocument:
             Version: '2012-10-17'
@@ -114,8 +143,8 @@ Resources:
         Variables:
           TABLE_SHUFFLE: !Select [1, !Split ["/", !Ref pShuffleArn]]
           BUCKET_SHUFFLE: !Ref pShuffleBucket
-      MemorySize: 2048
-      Timeout: 300
+      MemorySize: 10240
+      Timeout: 900
   FnReduce1LogGroup:
     Type: AWS::Logs::LogGroup
     Properties:

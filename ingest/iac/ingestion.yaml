@@ -9,6 +9,7 @@ Globals:
     Tracing: Active
     Layers:
       - !Sub 'arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14'
+      - !Sub 'arn:aws:lambda:${AWS::Region}:157417159150:layer:AWSCodeGuruProfilerPythonAgentLambdaLayer:10'
       # NOTE: this is causing SAM local issues, need to hard code the account id
       - !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:xray-python38:2'
 Parameters:
@@ -20,6 +21,9 @@ Parameters:
     Type: String
   pPackage:
     Type: String
+  pProfilingGroup:
+    Type: String
+    Default: smr-ingest
 Resources:
   # DynamoDB
   Counters:
@@ -56,6 +60,15 @@ Resources:
       # FifoThroughputLimit: perQueue
       MessageRetentionPeriod: 300
       VisibilityTimeout: 60
+  # CodeGuru
+  CodeProfile:
+    Type: AWS::CodeGuruProfiler::ProfilingGroup
+    Properties:
+      ComputePlatform: AWSLambda
+      ProfilingGroupName: !Ref pProfilingGroup
+      AgentPermissions:
+        Principals:
+          - !GetAtt FnRole.Arn
   # Lambda
   FnRole:
     Type: AWS::IAM::Role
@@ -71,13 +84,20 @@ Resources:
               - sts:AssumeRole
       Path: '/service-role/'
       Policies:
-        - PolicyName: cloudwatch-logs
+        - PolicyName: cloudwatch-insights
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
+                Resource: '*'
+        - PolicyName: cloudwatch-logs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                   - logs:DescribeLogStreams
@@ -93,6 +113,16 @@ Resources:
                   - xray:GetSamplingRules
                   - xray:GetSamplingTargets
                   - xray:GetSamplingStatisticSummaries
+                Resource: '*'
+        - PolicyName: codeguru
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codeguru-profiler:ConfigureAgent
+                  - codeguru-profiler:CreateProfilingGroup
+                  - codeguru-profiler:PostAgentProfile
                 Resource: '*'
         - PolicyName: s3
           PolicyDocument:
@@ -137,6 +167,10 @@ Resources:
           QUEUE: !Ref IngestQ
           BATCH_SIZE: !Ref pBatchSize
           BATCH_LIMIT: !Ref pBatchLimit
+          AWS_LAMBDA_EXEC_WRAPPER: /opt/codeguru_profiler_lambda_exec
+          AWS_CODEGURU_PROFILER_GROUP_NAME: !Ref pProfilingGroup
+          AWS_CODEGURU_PROFILER_GROUP_ARN: !GetAtt CodeProfile.Arn
+          AWS_CODEGURU_PROFILER_TARGET_REGION: !Ref AWS::Region
       Layers:
         - !Ref pPackage
       MemorySize: 2048

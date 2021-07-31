@@ -2,8 +2,21 @@ import json
 import os
 from aws_xray_sdk.core import xray_recorder
 from aws_xray_sdk.core import patch_all
+from codeguru_profiler_agent import with_lambda_profiler
 from lib.s_counter import SCounter
 from lib.s_ingest import SIngest
+
+# initialization: global variables
+batch_size = int(os.environ["BATCH_SIZE"])
+batch_limit = int(os.environ["BATCH_LIMIT"])
+
+# initialization: sqs
+queue = os.environ["QUEUE"]
+
+# initialization: ddb
+profiling_group = os.environ["AWS_CODEGURU_PROFILER_GROUP_NAME"]
+table_counters = os.environ["TABLE_COUNTERS"]
+s_counters = SCounter(table_counters)
 
 # helper functions
 def build_response(code, body):
@@ -33,6 +46,7 @@ def get_method(event):
     return response
 
 # lambda invoker handler
+@with_lambda_profiler(profiling_group_name=profiling_group)
 def handler(event, context):
     eid = event["eid"]
     bucket = event["bucket"]
@@ -48,14 +62,3 @@ def handler(event, context):
     }
     print(json.dumps(output))
     return output
-
-# initialization: global variables
-batch_size = int(os.environ["BATCH_SIZE"])
-batch_limit = int(os.environ["BATCH_LIMIT"])
-
-# initialization: sqs
-queue = os.environ["QUEUE"]
-
-# initialization: ddb
-table_counters = os.environ["TABLE_COUNTERS"]
-s_counters = SCounter(table_counters)
