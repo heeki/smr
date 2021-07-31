@@ -9,14 +9,19 @@ Globals:
     Tracing: Active
     Layers:
       - !Sub 'arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14'
-      # NOTE: this is causing SAM local issues, need to hard code the account id
-      - !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:xray-python38:2'
+      # NOTE: referencing ${AWS::AccountId} is causing SAM local issues, need to hard code the account id
+      # https://github.com/aws/aws-sam-cli/issues/1736
+      # https://github.com/aws/aws-sam-cli/issues/2325
+      # - !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:xray-python38:2'
+      - !Sub 'arn:aws:lambda:${AWS::Region}:546275881527:layer:xray-python38:2'
 Parameters:
   pQueueArn:
     Type: String
   pCountersArn:
     Type: String
   pPackage:
+    Type: String
+  pShuffleType:
     Type: String
 Resources:
   # S3
@@ -138,9 +143,10 @@ Resources:
       Role: !GetAtt FnRole.Arn
       Environment:
         Variables:
-          TABLE_COUNTERS: !Select [1, !Split ["/", !Ref pCountersArn]]
-          TABLE_SHUFFLE: !Ref ShuffleTable
-          BUCKET_SHUFFLE: !Ref ShuffleBucket
+          COUNTERS_TABLE: !Select [1, !Split ["/", !Ref pCountersArn]]
+          SHUFFLE_TABLE: !Ref ShuffleTable
+          SHUFFLE_BUCKET: !Ref ShuffleBucket
+          SHUFFLE_TYPE: !Ref ShuttleType
       Layers:
         - !Ref pPackage
   FnLogGroup:

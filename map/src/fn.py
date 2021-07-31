@@ -32,7 +32,7 @@ def get_method(event):
 
 # lambda invoker handler
 def handler(event, context):
-    print(json.dumps(event))
+    # print(json.dumps(event))
     output = {
         "mapped": []
     }
@@ -47,8 +47,11 @@ def handler(event, context):
     return output
 
 # initialization
-table_counters = os.environ["TABLE_COUNTERS"]
-table_shuffle = os.environ["TABLE_SHUFFLE"]
-bucket_shuffle = os.environ["BUCKET_SHUFFLE"]
-s_map = SMap(table_shuffle, bucket_shuffle)
-s_counters = SCounter(table_counters)
+config = {
+    "shuffle_type": os.environ["SHUFFLE_TYPE"],
+    "counters_table": os.environ["COUNTERS_TABLE"],
+    "shuffle_table": os.environ["SHUFFLE_TABLE"],
+    "shuffle_bucket": os.environ["SHUFFLE_BUCKET"]
+}
+s_map = SMap(config)
+s_counters = SCounter(config["counters_table"])
