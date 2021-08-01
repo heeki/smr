@@ -10,8 +10,11 @@ Globals:
     Layers:
       - !Sub 'arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14'
       - !Sub 'arn:aws:lambda:${AWS::Region}:157417159150:layer:AWSCodeGuruProfilerPythonAgentLambdaLayer:10'
-      # NOTE: this is causing SAM local issues, need to hard code the account id
-      - !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:xray-python38:2'
+      # NOTE: referencing ${AWS::AccountId} is causing SAM local issues, need to hard code the account id
+      # https://github.com/aws/aws-sam-cli/issues/1736
+      # https://github.com/aws/aws-sam-cli/issues/2325
+      # - !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:xray-python38:2'
+      - !Sub 'arn:aws:lambda:${AWS::Region}:546275881527:layer:xray-python38:2'
 Parameters:
   pBucket:
     Type: String
@@ -163,10 +166,11 @@ Resources:
       Role: !GetAtt FnRole.Arn
       Environment:
         Variables:
-          TABLE_COUNTERS: !Ref Counters
-          QUEUE: !Ref IngestQ
-          BATCH_SIZE: !Ref pBatchSize
-          BATCH_LIMIT: !Ref pBatchLimit
+          BUCKET: !Ref pBucket
+          COUNTERS_TABLE: !Ref Counters
+          SQS_QUEUE: !Ref IngestQ
+          SQS_BATCH_SIZE: !Ref pBatchSize
+          SQS_BATCH_LIMIT: !Ref pBatchLimit
           AWS_LAMBDA_EXEC_WRAPPER: /opt/codeguru_profiler_lambda_exec
           AWS_CODEGURU_PROFILER_GROUP_NAME: !Ref pProfilingGroup
           AWS_CODEGURU_PROFILER_GROUP_ARN: !GetAtt CodeProfile.Arn

@@ -12,7 +12,11 @@ class AdptS3:
             Key=key
         )
         # TODO: convert from reading entire file to handle streaming body
-        return response["Body"].read().decode("utf-8")
+        try:
+            output = response["Body"].read().decode("utf-8")
+        except Exception as e:
+            output = response["Body"].read().decode("latin-1")
+        return output
 
     def put(self, okey, item):
         response = self.client.put_object(
