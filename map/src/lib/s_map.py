@@ -1,7 +1,7 @@
 from aws_xray_sdk.core import xray_recorder
 from lib.p_map import PortMap
 from lib.s_descriptor import Descriptor
-from lib.s_encoders import DateTimeEncoder
+# from lib.s_encoders import DateTimeEncoder
 
 class SMap:
     def __init__(self, config):
@@ -21,6 +21,7 @@ class SMap:
             projected = [item[i] for i in projection]
             payload[pk].append(projected)
             i_messages += 1
+        self.port.increment(eid, i_messages)
         output = {
             "mapped": [],
             "processed": i_messages

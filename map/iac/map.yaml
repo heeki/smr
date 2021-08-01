@@ -14,15 +14,19 @@ Globals:
       # https://github.com/aws/aws-sam-cli/issues/2325
       # - !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:xray-python38:2'
       - !Sub 'arn:aws:lambda:${AWS::Region}:546275881527:layer:xray-python38:2'
+      - !Ref pPackage
 Parameters:
   pQueueArn:
     Type: String
-  pCountersArn:
+  pCountersTableArn:
     Type: String
   pPackage:
     Type: String
   pShuffleType:
     Type: String
+  pShuffleLSI:
+    Type: String
+    Default: smr-map-ShuffleLSI-GG93T1XPYAJA
 Resources:
   # S3
   ShuffleBucket:
@@ -36,12 +40,24 @@ Resources:
           AttributeType: S
         - AttributeName: iid
           AttributeType: S
+        - AttributeName: pk
+          AttributeType: S
       BillingMode: PAY_PER_REQUEST
       KeySchema:
         - AttributeName: eid
           KeyType: HASH
         - AttributeName: iid
           KeyType: RANGE
+      LocalSecondaryIndexes:
+        - IndexName: !Ref pShuffleLSI
+          KeySchema:
+            - AttributeName: eid
+              KeyType: HASH
+            - AttributeName: pk
+              KeyType: RANGE
+          Projection:
+            # ProjectionType: KEYS_ONLY
+            ProjectionType: ALL
   # Lambda
   FnRole:
     Type: AWS::IAM::Role
@@ -123,8 +139,9 @@ Resources:
                   - dynamodb:Scan
                   - dynamodb:UpdateItem
                 Resource:
-                  - !Ref pCountersArn
+                  - !Ref pCountersTableArn
                   - !GetAtt ShuffleTable.Arn
+                  - !Sub '${ShuffleTable.Arn}/index/${pShuffleLSI}'
         - PolicyName: s3
           PolicyDocument:
             Version: '2012-10-17'
@@ -143,12 +160,11 @@ Resources:
       Role: !GetAtt FnRole.Arn
       Environment:
         Variables:
-          COUNTERS_TABLE: !Select [1, !Split ["/", !Ref pCountersArn]]
+          COUNTERS_TABLE: !Select [1, !Split ["/", !Ref pCountersTableArn]]
           SHUFFLE_TABLE: !Ref ShuffleTable
+          SHUFFLE_LSI: !Ref pShuffleLSI
           SHUFFLE_BUCKET: !Ref ShuffleBucket
-          SHUFFLE_TYPE: !Ref ShuttleType
-      Layers:
-        - !Ref pPackage
+          SHUFFLE_TYPE: !Ref pShuffleType
   FnLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:

@@ -1,34 +1,16 @@
 import json
 import os
-from lib.s_counter import SCounter
 from lib.s_map import SMap
 
-# helper functions
-def build_response(code, body):
-    # headers for cors
-    headers = {
-        "Access-Control-Allow-Origin": "amazonaws.com",
-        "Access-Control-Allow-Credentials": True
-    }
-    # lambda proxy integration
-    response = {
-        'isBase64Encoded': False,
-        'statusCode': code,
-        'headers': headers,
-        'body': body
-    }
-    return response
-
-def get_method(event):
-    response = None
-    context = event["requestContext"]
-    # version 1.0
-    if "httpMethod" in context:
-        response = context["httpMethod"]
-    # version 2.0
-    elif "http" in context and "method" in context["http"]:
-        response = context["http"]["method"]
-    return response
+# initialization
+config = {
+    "shuffle_type": os.getenv("SHUFFLE_TYPE", "s3"),
+    "shuffle_table": os.environ["SHUFFLE_TABLE"],
+    "shuffle_lsi": os.environ["SHUFFLE_LSI"],
+    "shuffle_bucket": os.environ["SHUFFLE_BUCKET"],
+    "counters_table": os.environ["COUNTERS_TABLE"]
+}
+s_map = SMap(config)
 
 # lambda invoker handler
 def handler(event, context):
@@ -43,15 +25,4 @@ def handler(event, context):
         response = s_map.process(eid, batch)
         output["eid"] = eid
         output["mapped"].extend(response["mapped"])
-        s_counters.increment(eid, "mapped", response["processed"])
     return output
-
-# initialization
-config = {
-    "shuffle_type": os.environ["SHUFFLE_TYPE"],
-    "counters_table": os.environ["COUNTERS_TABLE"],
-    "shuffle_table": os.environ["SHUFFLE_TABLE"],
-    "shuffle_bucket": os.environ["SHUFFLE_BUCKET"]
-}
-s_map = SMap(config)
-s_counters = SCounter(config["counters_table"])

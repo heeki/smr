@@ -9,20 +9,28 @@ Globals:
     Tracing: Active
     Layers:
       - !Sub 'arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14'
-      # NOTE: this is causing SAM local issues, need to hard code the account id
-      - !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:xray-python38:2'
+      # NOTE: referencing ${AWS::AccountId} is causing SAM local issues, need to hard code the account id
+      # https://github.com/aws/aws-sam-cli/issues/1736
+      # https://github.com/aws/aws-sam-cli/issues/2325
+      # - !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:xray-python38:2'
+      - !Sub 'arn:aws:lambda:${AWS::Region}:546275881527:layer:xray-python38:2'
+      - !Ref pPackage
 Parameters:
-  pCountersArn:
-    Type: String
-  pShuffleArn:
-    Type: String
   pAslBucket:
     Type: String
   pAslKey:
     Type: String
   pPackage:
     Type: String
+  pCountersTableArn:
+    Type: String
+  pShuffleTableArn:
+    Type: String
   pShuffleBucket:
+    Type: String
+  pShuffleType:
+    Type: String
+  pShuffleLSI:
     Type: String
 Resources:
   # Lambda
@@ -95,8 +103,9 @@ Resources:
                   - dynamodb:Scan
                   - dynamodb:UpdateItem
                 Resource:
-                  - !Ref pCountersArn
-                  - !Ref pShuffleArn
+                  - !Ref pCountersTableArn
+                  - !Ref pShuffleTableArn
+                  - !Sub '${pShuffleTableArn}/index/${pShuffleLSI}'
         - PolicyName: s3-bucket
           PolicyDocument:
             Version: '2012-10-17'
@@ -124,11 +133,11 @@ Resources:
       Role: !GetAtt FnRole.Arn
       Environment:
         Variables:
-          TABLE_COUNTERS: !Select [1, !Split ["/", !Ref pCountersArn]]
-          TABLE_SHUFFLE: !Select [1, !Split ["/", !Ref pShuffleArn]]
-          BUCKET_SHUFFLE: !Ref pShuffleBucket
-      Layers:
-        - !Ref pPackage
+          COUNTERS_TABLE: !Select [1, !Split ["/", !Ref pCountersTableArn]]
+          SHUFFLE_TABLE: !Select [1, !Split ["/", !Ref pShuffleTableArn]]
+          SHUFFLE_LSI: !Ref pShuffleLSI
+          SHUFFLE_BUCKET: !Ref pShuffleBucket
+          SHUFFLE_TYPE: !Ref pShuffleType
   FnGateLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -141,8 +150,11 @@ Resources:
       Role: !GetAtt FnRole.Arn
       Environment:
         Variables:
-          TABLE_SHUFFLE: !Select [1, !Split ["/", !Ref pShuffleArn]]
-          BUCKET_SHUFFLE: !Ref pShuffleBucket
+          COUNTERS_TABLE: !Select [1, !Split ["/", !Ref pCountersTableArn]]
+          SHUFFLE_TABLE: !Select [1, !Split ["/", !Ref pShuffleTableArn]]
+          SHUFFLE_LSI: !Ref pShuffleLSI
+          SHUFFLE_BUCKET: !Ref pShuffleBucket
+          SHUFFLE_TYPE: !Ref pShuffleType
       MemorySize: 10240
       Timeout: 900
   FnReduce1LogGroup:
@@ -158,8 +170,11 @@ Resources:
       Role: !GetAtt FnRole.Arn
       Environment:
         Variables:
-          TABLE_SHUFFLE: !Select [1, !Split ["/", !Ref pShuffleArn]]
-          BUCKET_SHUFFLE: !Ref pShuffleBucket
+          COUNTERS_TABLE: !Select [1, !Split ["/", !Ref pCountersTableArn]]
+          SHUFFLE_TABLE: !Select [1, !Split ["/", !Ref pShuffleTableArn]]
+          SHUFFLE_LSI: !Ref pShuffleLSI
+          SHUFFLE_BUCKET: !Ref pShuffleBucket
+          SHUFFLE_TYPE: !Ref pShuffleType
   FnReduce2LogGroup:
     Type: AWS::Logs::LogGroup
     Properties:

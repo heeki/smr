@@ -1,81 +1,50 @@
-import boto3
-import csv
-import json
-import uuid
 from aws_xray_sdk.core import xray_recorder
-from datetime import datetime
+from lib.p_reduce import PortReduce
+from lib.s_descriptor import Descriptor
+# from lib.s_encoders import DateTimeEncoder
 
-# helper class
-class DateTimeEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, datetime):
-            return o.isoformat()
-        return json.JSONEncoder.default(self, o)
-
-# main class
 class SReduce:
-    def __init__(self, table, bucket):
-        self.session = boto3.session.Session()
-        self.cl_ddb = self.session.client("dynamodb")
-        self.cl_s3 = self.session.client("s3")
-        self.table = table
-        self.bucket = bucket
+    def __init__(self, config):
+        self.port = PortReduce(config)
 
-    def list_prefixes(self, eid):
-        response = self.cl_s3.list_objects(
-            Bucket=self.bucket,
-            Prefix="{}/".format(eid),
-            Delimiter="/"
-        )
-        output = []
-        for prefix in response["CommonPrefixes"]:
-            output.append(prefix["Prefix"])
+    def is_ready(self, eid):
+        is_ready = self.port.is_ready(eid)
+        output = {}
+        output["eid"] = eid
+        output["is_ready"] = is_ready
+        if is_ready:
+            output["mapped"] = self.port.list_tier2(eid)
         return output
 
-    def list_objects(self, prefix):
-        paginator = self.cl_s3.get_paginator("list_objects_v2")
-        pages = paginator.paginate(
-            Bucket=self.bucket,
-            Prefix=prefix
-        )
-        output = []
-        for page in pages:
-            for content in page["Contents"]:
-                output.append(content["Key"])
-        return output
-
-    def get_object(self, bucket, key):
-        response = self.cl_s3.get_object(
-            Bucket=bucket,
-            Key=key
-        )
-        # TODO: convert from reading entire file to handle streaming body
-        return response["Body"].read().decode("utf-8").split("\n")
-
-    def process(self, items):
+    def process(self, eid, pk):
+        # mapping
+        mapping = {
+            "FlightDate": 0,
+            "UniqueCarrier": 1,
+            "FlightNum": 2,
+            "Origin": 3,
+            "Dest": 4,
+            "DepDelay": 5,
+            "ArrDelay": 6
+        }
         # prep aggregation
+        items = self.port.list_tier3(eid, pk)
         aggregation = {}
         subsegment = xray_recorder.begin_subsegment("Reduce Phase")
-        is_first = True
+        subsegment.put_annotation("ExecutionId", eid)
         for item in items:
-            (eid, pk, iid) = item.split(".")[0].split("/")
-            if is_first:
-                subsegment.put_annotation("ExecutionId", eid)
-                is_first = False
-            body = self.get_object(self.bucket, item)
-            for row in body:
-                data = json.loads(row)
-                for datum in data:
-                    # [FlightDate,UniqueCarrier,FlightNum,Origin,Dest,DepDelay,ArrDelay]
-                    airline = datum[1]
-                    arrdelay = datum[6]
-                    if airline not in aggregation:
-                        aggregation[airline] = {
-                            "total": 0,
-                            "count": 0
-                        }
-                    aggregation[airline]["total"] += float(arrdelay) if arrdelay != "" else 0
-                    aggregation[airline]["count"] += 1
+            (eid, pk, iid) = Descriptor.from_s3_okey(item)
+            body = self.port.get(eid, pk, iid)
+            for datum in body:
+                airline = datum[mapping["UniqueCarrier"]]
+                arrdelay = datum[mapping["ArrDelay"]]
+                if airline not in aggregation:
+                    aggregation[airline] = {
+                        "total": 0,
+                        "count": 0
+                    }
+                aggregation[airline]["total"] += float(arrdelay) if arrdelay != "" else 0
+                aggregation[airline]["count"] += 1
         # perform reduce operation
         output = {
             "eid": eid,
