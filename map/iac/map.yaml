@@ -24,9 +24,10 @@ Parameters:
     Type: String
   pShuffleType:
     Type: String
-  pShuffleLSI:
+  pShuffleLSI1:
     Type: String
-    Default: smr-map-ShuffleLSI-GG93T1XPYAJA
+  pShuffleLSI2:
+    Type: String
 Resources:
   # S3
   ShuffleBucket:
@@ -49,15 +50,22 @@ Resources:
         - AttributeName: iid
           KeyType: RANGE
       LocalSecondaryIndexes:
-        - IndexName: !Ref pShuffleLSI
+        - IndexName: !Ref pShuffleLSI1
           KeySchema:
             - AttributeName: eid
               KeyType: HASH
             - AttributeName: pk
               KeyType: RANGE
           Projection:
-            # ProjectionType: KEYS_ONLY
             ProjectionType: ALL
+        - IndexName: !Ref pShuffleLSI2
+          KeySchema:
+            - AttributeName: eid
+              KeyType: HASH
+            - AttributeName: pk
+              KeyType: RANGE
+          Projection:
+            ProjectionType: KEYS_ONLY
   # Lambda
   FnRole:
     Type: AWS::IAM::Role
@@ -141,7 +149,8 @@ Resources:
                 Resource:
                   - !Ref pCountersTableArn
                   - !GetAtt ShuffleTable.Arn
-                  - !Sub '${ShuffleTable.Arn}/index/${pShuffleLSI}'
+                  - !Sub '${ShuffleTable.Arn}/index/${pShuffleLSI1}'
+                  - !Sub '${ShuffleTable.Arn}/index/${pShuffleLSI2}'
         - PolicyName: s3
           PolicyDocument:
             Version: '2012-10-17'
@@ -162,7 +171,8 @@ Resources:
         Variables:
           COUNTERS_TABLE: !Select [1, !Split ["/", !Ref pCountersTableArn]]
           SHUFFLE_TABLE: !Ref ShuffleTable
-          SHUFFLE_LSI: !Ref pShuffleLSI
+          SHUFFLE_LSI1: !Ref pShuffleLSI1
+          SHUFFLE_LSI2: !Ref pShuffleLSI2
           SHUFFLE_BUCKET: !Ref ShuffleBucket
           SHUFFLE_TYPE: !Ref pShuffleType
   FnLogGroup:

@@ -30,7 +30,9 @@ Parameters:
     Type: String
   pShuffleType:
     Type: String
-  pShuffleLSI:
+  pShuffleLSI1:
+    Type: String
+  pShuffleLSI2:
     Type: String
 Resources:
   # Lambda
@@ -105,7 +107,8 @@ Resources:
                 Resource:
                   - !Ref pCountersTableArn
                   - !Ref pShuffleTableArn
-                  - !Sub '${pShuffleTableArn}/index/${pShuffleLSI}'
+                  - !Sub '${pShuffleTableArn}/index/${pShuffleLSI1}'
+                  - !Sub '${pShuffleTableArn}/index/${pShuffleLSI2}'
         - PolicyName: s3-bucket
           PolicyDocument:
             Version: '2012-10-17'
@@ -135,7 +138,8 @@ Resources:
         Variables:
           COUNTERS_TABLE: !Select [1, !Split ["/", !Ref pCountersTableArn]]
           SHUFFLE_TABLE: !Select [1, !Split ["/", !Ref pShuffleTableArn]]
-          SHUFFLE_LSI: !Ref pShuffleLSI
+          SHUFFLE_LSI1: !Ref pShuffleLSI1
+          SHUFFLE_LSI2: !Ref pShuffleLSI2
           SHUFFLE_BUCKET: !Ref pShuffleBucket
           SHUFFLE_TYPE: !Ref pShuffleType
   FnGateLogGroup:
@@ -152,7 +156,8 @@ Resources:
         Variables:
           COUNTERS_TABLE: !Select [1, !Split ["/", !Ref pCountersTableArn]]
           SHUFFLE_TABLE: !Select [1, !Split ["/", !Ref pShuffleTableArn]]
-          SHUFFLE_LSI: !Ref pShuffleLSI
+          SHUFFLE_LSI1: !Ref pShuffleLSI1
+          SHUFFLE_LSI2: !Ref pShuffleLSI2
           SHUFFLE_BUCKET: !Ref pShuffleBucket
           SHUFFLE_TYPE: !Ref pShuffleType
       MemorySize: 10240
@@ -172,7 +177,8 @@ Resources:
         Variables:
           COUNTERS_TABLE: !Select [1, !Split ["/", !Ref pCountersTableArn]]
           SHUFFLE_TABLE: !Select [1, !Split ["/", !Ref pShuffleTableArn]]
-          SHUFFLE_LSI: !Ref pShuffleLSI
+          SHUFFLE_LSI1: !Ref pShuffleLSI1
+          SHUFFLE_LSI2: !Ref pShuffleLSI2
           SHUFFLE_BUCKET: !Ref pShuffleBucket
           SHUFFLE_TYPE: !Ref pShuffleType
   FnReduce2LogGroup:

@@ -14,8 +14,9 @@ class PortReduce:
             self.client = AdptS3(self.session, self.shuffle_bucket)
         elif self.shuffle_type == "dynamodb":
             self.shuffle_table = config["shuffle_table"]
-            self.shuffle_lsi = config["shuffle_lsi"]
-            self.client = AdptDynamoDB(self.session, self.shuffle_table, self.shuffle_lsi)
+            self.shuffle_lsi_all = config["shuffle_lsi_all"]
+            self.shuffle_lsi_key = config["shuffle_lsi_key"]
+            self.client = AdptDynamoDB(self.session, self.shuffle_table, self.shuffle_lsi_all)
         self.counters_table = config["counters_table"]
         self.counters = SCounter(self.session, self.counters_table)
 
@@ -31,6 +32,20 @@ class PortReduce:
             }
             key_condition = "eid = :eid"
             projection_expression = "eid, pk"
+
+            # local debugging
+            # client = self.session.client("dynamodb")
+            # response = client.query(
+            #     TableName=self.shuffle_table,
+            #     IndexName=self.shuffle_lsi_key,
+            #     ExpressionAttributeValues=expression_values,
+            #     KeyConditionExpression=key_condition,
+            #     ProjectionExpression=projection_expression
+            # )
+            # print(json.dumps(response))
+            # items = response["Items"]
+
+            self.client.set_lsi(self.shuffle_lsi_key)
             items = self.client.query(expression_values, key_condition, projection_expression)
             prefixes = set()
             for item in items:
@@ -44,10 +59,12 @@ class PortReduce:
             output = self.client.list_objects(prefix)
         elif self.shuffle_type == "dynamodb":
             expression_values = {
-                ":eid": {"S": eid}
+                ":eid": {"S": eid},
+                ":pk": {"S": pk}
             }
-            key_condition = "eid = :eid"
+            key_condition = "eid = :eid AND pk = :pk"
             projection_expression = "eid, pk, iid"
+            self.client.set_lsi(self.shuffle_lsi_all)
             items = self.client.query(expression_values, key_condition, projection_expression)
             output = []
             for item in items:

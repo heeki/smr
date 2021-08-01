@@ -11,7 +11,8 @@ from lib.s_reduce import SReduce
 config = {
     "shuffle_type": os.getenv("SHUFFLE_TYPE", "s3"),
     "shuffle_table": os.environ["SHUFFLE_TABLE"],
-    "shuffle_lsi": os.environ["SHUFFLE_LSI"],
+    "shuffle_lsi_all": os.environ["SHUFFLE_LSI1"],
+    "shuffle_lsi_key": os.environ["SHUFFLE_LSI2"],
     "shuffle_bucket": os.environ["SHUFFLE_BUCKET"],
     "counters_table": os.environ["COUNTERS_TABLE"]
 }
@@ -24,4 +25,5 @@ def handler(event, context):
     eid = parsed[0]
     pk = parsed[1]
     output = s_reduce.process(eid, pk)
+    print(json.dumps(output))
     return output

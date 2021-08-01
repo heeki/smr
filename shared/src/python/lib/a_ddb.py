@@ -8,6 +8,9 @@ class AdptDynamoDB:
         self.table = table
         self.lsi = lsi
 
+    def set_lsi(self, lsi):
+        self.lsi = lsi
+
     def get(self, hkey):
         response = self.client.get_item(
             TableName=self.table,
@@ -55,15 +58,31 @@ class AdptDynamoDB:
             }
         return response
 
-    def query(self, expression_values, key_condition, projection_expression):
-        response = self.client.query(
-            TableName=self.table,
-            IndexName=self.lsi,
-            ExpressionAttributeValues=expression_values,
-            KeyConditionExpression=key_condition,
-            ProjectionExpression=projection_expression
-        )
-        if "Items" in response:
-            return response["Items"]
+    def _query(self, expression_values, key_condition, projection_expression, last_key=None):
+        if last_key is None:
+            response = self.client.query(
+                TableName=self.table,
+                IndexName=self.lsi,
+                ExpressionAttributeValues=expression_values,
+                KeyConditionExpression=key_condition,
+                ProjectionExpression=projection_expression,
+            )
         else:
-            return []
+            response = self.client.query(
+                TableName=self.table,
+                IndexName=self.lsi,
+                ExpressionAttributeValues=expression_values,
+                KeyConditionExpression=key_condition,
+                ProjectionExpression=projection_expression,
+                ExclusiveStartKey=last_key
+            )
+        return response
+
+    def query(self, expression_values, key_condition, projection_expression):
+        output = []
+        response = self._query(expression_values, key_condition, projection_expression)
+        output.extend(response["Items"])
+        while "LastEvaluatedKey" in response:
+            response = self._query(expression_values, key_condition, projection_expression, last_key=response['LastEvaluatedKey'])
+            output.extend(response["Items"])
+        return output

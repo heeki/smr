@@ -6,7 +6,8 @@ from lib.s_map import SMap
 config = {
     "shuffle_type": os.getenv("SHUFFLE_TYPE", "s3"),
     "shuffle_table": os.environ["SHUFFLE_TABLE"],
-    "shuffle_lsi": os.environ["SHUFFLE_LSI"],
+    "shuffle_lsi_all": os.environ["SHUFFLE_LSI1"],
+    "shuffle_lsi_key": os.environ["SHUFFLE_LSI2"],
     "shuffle_bucket": os.environ["SHUFFLE_BUCKET"],
     "counters_table": os.environ["COUNTERS_TABLE"]
 }
