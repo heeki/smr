@@ -72,7 +72,23 @@ def main():
     history = d.get_execution_history(args.eid)
     # print(json.dumps(history, cls=DateTimeEncoder))
     output = d.process_execution_history(history)
-    print(json.dumps(output, cls=DateTimeEncoder))
+    # print(json.dumps(output, cls=DateTimeEncoder))
+    excel = [
+        args.eid,
+        output["ExecutionId"],
+        output["Processed"],
+        output["IngestForMap"]["TaskStateEntered"],
+        output["IngestForMap"]["TaskStateExited"],
+        output["ReducePrep"]["TaskStateEntered"],
+        output["ReducePrep"]["TaskStateExited"],
+        output["ReduceGate"]["TaskStateEntered"],
+        output["ReduceGate"]["TaskStateExited"],
+        output["ReduceAggregate"]["TaskStateEntered"],
+        output["ReduceAggregate"]["TaskStateExited"],
+        output["ReduceRank"]["TaskStateEntered"],
+        output["ReduceRank"]["TaskStateExited"]
+    ]
+    print(json.dumps(excel))
 
 if __name__ == "__main__":
     main()
