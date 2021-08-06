@@ -60,22 +60,39 @@ class AdptDynamoDB:
 
     def _query(self, expression_values, key_condition, projection_expression, last_key=None):
         if last_key is None:
-            response = self.client.query(
-                TableName=self.table,
-                IndexName=self.lsi,
-                ExpressionAttributeValues=expression_values,
-                KeyConditionExpression=key_condition,
-                ProjectionExpression=projection_expression,
-            )
+            if self.lsi is None:
+                response = self.client.query(
+                    TableName=self.table,
+                    ExpressionAttributeValues=expression_values,
+                    KeyConditionExpression=key_condition,
+                    ProjectionExpression=projection_expression,
+                )
+            else:
+                response = self.client.query(
+                    TableName=self.table,
+                    IndexName=self.lsi,
+                    ExpressionAttributeValues=expression_values,
+                    KeyConditionExpression=key_condition,
+                    ProjectionExpression=projection_expression,
+                )
         else:
-            response = self.client.query(
-                TableName=self.table,
-                IndexName=self.lsi,
-                ExpressionAttributeValues=expression_values,
-                KeyConditionExpression=key_condition,
-                ProjectionExpression=projection_expression,
-                ExclusiveStartKey=last_key
-            )
+            if self.lsi is None:
+                response = self.client.query(
+                    TableName=self.table,
+                    ExpressionAttributeValues=expression_values,
+                    KeyConditionExpression=key_condition,
+                    ProjectionExpression=projection_expression,
+                    ExclusiveStartKey=last_key
+                )
+            else:
+                response = self.client.query(
+                    TableName=self.table,
+                    IndexName=self.lsi,
+                    ExpressionAttributeValues=expression_values,
+                    KeyConditionExpression=key_condition,
+                    ProjectionExpression=projection_expression,
+                    ExclusiveStartKey=last_key
+                )
         return response
 
     def query(self, expression_values, key_condition, projection_expression):
@@ -86,3 +103,25 @@ class AdptDynamoDB:
             response = self._query(expression_values, key_condition, projection_expression, last_key=response['LastEvaluatedKey'])
             output.extend(response["Items"])
         return output
+
+    def _generate_delete_requests(self, hkey, skey, items):
+        output = []
+        for item in items:
+            output.append({
+                "DeleteRequest": {
+                    "Key": {
+                        hkey: {"S": item["hval"]},
+                        skey: {"S": item["sval"]}
+                    }
+                }
+            })
+        return output
+
+    def batch_delete(self, hkey, skey, items):
+        requests = self._generate_delete_requests(hkey, skey, items)
+        response = self.client.batch_write_item(
+            RequestItems={
+                self.table: requests
+            }
+        )
+        return response

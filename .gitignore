@@ -3,4 +3,5 @@ architecture/*.pdf
 */etc
 */iac/*_output.yaml
 */tmp
+shared/src/python/lib/__pycache__
 notes.md

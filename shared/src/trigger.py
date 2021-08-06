@@ -3,6 +3,9 @@ import json
 import os.path
 import uuid
 from datetime import datetime
+from python.lib.a_lambda import AdptLambda
+from python.lib.a_s3 import AdptS3
+from python.lib.a_sfn import AdptSFn
 
 # helper class
 class DateTimeEncoder(json.JSONEncoder):
@@ -14,26 +17,24 @@ class DateTimeEncoder(json.JSONEncoder):
 class Trigger:
     def __init__(self):
         self.session = boto3.session.Session()
-        self.cl_s3 = self.session.client("s3")
-        self.cl_sf = self.session.client("stepfunctions")
         self.cl_lambda = self.session.client("lambda")
         if os.path.exists("etc/config.json"):
             with open("etc/config.json") as f:
                 self.config = json.load(f)
                 self.config["eid"] = str(uuid.uuid4())
+        self.fn = AdptLambda(self.session)
+        self.s3 = AdptS3(self.session, self.config["bucket"])
+        self.sfn = AdptSFn(self.session, self.config["account_id"])
 
     def list_objects(self):
         output = []
-        response = self.cl_s3.list_objects_v2(
-            Bucket=self.config["bucket"],
-            Prefix=self.config["prefix_live"]
-        )
-        for item in response["Contents"]:
-            if item["Key"].endswith(".csv"):
+        response = self.s3.list_objects(self.config["prefix_live"])
+        for item in response:
+            if item.endswith(".csv"):
                 output.append({
                     "eid": self.config["eid"],
                     "bucket": self.config["bucket"],
-                    "key": item["Key"]
+                    "key": item
                 })
         return output
 
@@ -43,21 +44,11 @@ class Trigger:
             "bucket": self.config["bucket"],
             "key": item
         }
-        response = self.cl_lambda.invoke(
-            FunctionName=self.config["ingest_fn"],
-            # InvocationType="RequestResponse",
-            InvocationType="Event",
-            LogType="None",
-            Payload=json.dumps(payload)
-        )
+        response = self.fn.invoke(self.config["ingest_fn"], payload, invoke_type="Event")
         return response
 
     def invoke_sfn(self, payload):
-        arn = "arn:aws:states:us-east-1:{}:stateMachine:{}".format(self.config["account_id"], self.config["ingest_sfn"])
-        response = self.cl_sf.start_execution(
-            stateMachineArn=arn,
-            input=json.dumps(payload)
-        )
+        response = self.sfn.invoke(self.config["ingest_sfn"], payload)
         return response
 
     def execute(self):
