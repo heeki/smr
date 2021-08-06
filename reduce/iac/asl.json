@@ -41,7 +41,7 @@
       },
       "Wait": {
         "Type": "Wait",
-        "Seconds": 60,
+        "Seconds": 1,
         "Next": "ReduceGate"
       },
       "ReduceRank": {
