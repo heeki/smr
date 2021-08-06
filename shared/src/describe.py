@@ -4,13 +4,7 @@ import json
 import os
 from datetime import datetime
 from python.lib.a_sfn import AdptSFn
-
-# helper class
-class DateTimeEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, datetime):
-            return o.isoformat()
-        return json.JSONEncoder.default(self, o)
+from python.lib.s_encoders import DateTimeEncoder
 
 class Describe:
     def __init__(self):
@@ -64,31 +58,39 @@ class Describe:
                     output[item["stateExitedEventDetails"]]["TaskStateExited"] = item["elapsed"]
         return output
 
+def _validate(item, field1, field2):
+    if field1 in item and field2 in item[field1]:
+        return item[field1][field2]
+    else:
+        return 0
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--eid", required=True, help="execution id")
+    ap.add_argument("--format", help="json, excel")
     args = ap.parse_args()
     d = Describe()
     history = d.get_execution_history(args.eid)
-    # print(json.dumps(history, cls=DateTimeEncoder))
     output = d.process_execution_history(history)
-    # print(json.dumps(output, cls=DateTimeEncoder))
-    excel = [
-        args.eid,
-        output["ExecutionId"],
-        output["Processed"],
-        output["IngestForMap"]["TaskStateEntered"],
-        output["IngestForMap"]["TaskStateExited"],
-        output["ReducePrep"]["TaskStateEntered"],
-        output["ReducePrep"]["TaskStateExited"],
-        output["ReduceGate"]["TaskStateEntered"],
-        output["ReduceGate"]["TaskStateExited"],
-        output["ReduceAggregate"]["TaskStateEntered"],
-        output["ReduceAggregate"]["TaskStateExited"],
-        output["ReduceRank"]["TaskStateEntered"],
-        output["ReduceRank"]["TaskStateExited"]
-    ]
-    print(json.dumps(excel))
+    if args.format is not None and args.format == "excel":
+        excel = [
+            args.eid,
+            output["ExecutionId"],
+            output["Processed"],
+            _validate(output, "IngestForMap", "TaskStateEntered"),
+            _validate(output, "IngestForMap", "TaskStateExited"),
+            _validate(output, "ReducePrep", "TaskStateEntered"),
+            _validate(output, "ReducePrep", "TaskStateExited"),
+            _validate(output, "ReduceGate", "TaskStateEntered"),
+            _validate(output, "ReduceGate", "TaskStateExited"),
+            _validate(output, "ReduceAggregate", "TaskStateEntered"),
+            _validate(output, "ReduceAggregate", "TaskStateExited"),
+            _validate(output, "ReduceRank", "TaskStateEntered"),
+            _validate(output, "ReduceRank", "TaskStateExited")
+        ]
+        print(json.dumps(excel))
+    else:
+        print(json.dumps(output, cls=DateTimeEncoder))
 
 if __name__ == "__main__":
     main()

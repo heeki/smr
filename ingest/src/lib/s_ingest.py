@@ -9,10 +9,11 @@ from lib.s_encoders import DateTimeEncoder
 class SIngest:
     def __init__(self, config):
         self.port = PortIngest(config)
-        # parameters
         self.batch_size = config["sqs_batch_size"]
         self.batch_limit = config["sqs_batch_limit"]
-        # internal data
+        self.initialize()
+
+    def initialize(self):
         self.group_id = str(uuid.uuid4())
         self.messages = []
         self.batches = []

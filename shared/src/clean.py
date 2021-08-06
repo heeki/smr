@@ -5,13 +5,7 @@ import os
 from datetime import datetime
 from python.lib.a_ddb import AdptDynamoDB
 from python.lib.a_s3 import AdptS3
-
-# helper class
-class DateTimeEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, datetime):
-            return o.isoformat()
-        return json.JSONEncoder.default(self, o)
+from python.lib.s_encoders import DateTimeEncoder
 
 class Clean:
     def __init__(self):

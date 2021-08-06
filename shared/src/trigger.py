@@ -6,13 +6,7 @@ from datetime import datetime
 from python.lib.a_lambda import AdptLambda
 from python.lib.a_s3 import AdptS3
 from python.lib.a_sfn import AdptSFn
-
-# helper class
-class DateTimeEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, datetime):
-            return o.isoformat()
-        return json.JSONEncoder.default(self, o)
+from python.lib.s_encoders import DateTimeEncoder
 
 class Trigger:
     def __init__(self):

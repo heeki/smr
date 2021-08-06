@@ -13,7 +13,6 @@ config = {
     "sqs_queue": os.environ["SQS_QUEUE"],
     "sqs_batch_size": int(os.environ["SQS_BATCH_SIZE"]),
     "sqs_batch_limit": int(os.environ["SQS_BATCH_LIMIT"])
-
 }
 print(json.dumps(config))
 s_ingest = SIngest(config)
@@ -24,6 +23,7 @@ profiling_group = os.environ["AWS_CODEGURU_PROFILER_GROUP_NAME"]
 # lambda invoker handler
 @with_lambda_profiler(profiling_group_name=profiling_group)
 def handler(event, context):
+    s_ingest.initialize()
     eid = event["eid"]
     okey = event["key"]
     processed = s_ingest.process(eid, okey)
