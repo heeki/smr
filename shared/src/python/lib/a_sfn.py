@@ -32,7 +32,7 @@ class AdptSFn:
         arn = "arn:aws:states:us-east-1:{}:execution:{}:{}".format(self.account_id, sfn_name, eid)
         response = self._get_execution_history(arn)
         output.extend(response["events"])
-        if "nextToken" in response:
+        while "nextToken" in response:
             response = self._get_execution_history(arn, response["nextToken"])
             output.extend(response["events"])
         return output
