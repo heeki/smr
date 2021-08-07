@@ -9,7 +9,7 @@ Globals:
     Tracing: Active
     Layers:
       - !Sub 'arn:aws:lambda:${AWS::Region}:580247275435:layer:LambdaInsightsExtension:14'
-      - !Sub 'arn:aws:lambda:${AWS::Region}:157417159150:layer:AWSCodeGuruProfilerPythonAgentLambdaLayer:10'
+      # - !Sub 'arn:aws:lambda:${AWS::Region}:157417159150:layer:AWSCodeGuruProfilerPythonAgentLambdaLayer:10'
       # NOTE: referencing ${AWS::AccountId} is causing SAM local issues, need to hard code the account id
       # https://github.com/aws/aws-sam-cli/issues/1736
       # https://github.com/aws/aws-sam-cli/issues/2325
@@ -17,6 +17,8 @@ Globals:
       - !Sub 'arn:aws:lambda:${AWS::Region}:546275881527:layer:xray-python38:2'
 Parameters:
   pBucket:
+    Type: String
+  pNumTasks:
     Type: String
   pBatchSize:
     Type: String
@@ -171,13 +173,14 @@ Resources:
           SQS_QUEUE: !Ref IngestQ
           SQS_BATCH_SIZE: !Ref pBatchSize
           SQS_BATCH_LIMIT: !Ref pBatchLimit
-          AWS_LAMBDA_EXEC_WRAPPER: /opt/codeguru_profiler_lambda_exec
+          NUM_TASKS: !Ref pNumTasks
+          # AWS_LAMBDA_EXEC_WRAPPER: /opt/codeguru_profiler_lambda_exec
           AWS_CODEGURU_PROFILER_GROUP_NAME: !Ref pProfilingGroup
           AWS_CODEGURU_PROFILER_GROUP_ARN: !GetAtt CodeProfile.Arn
           AWS_CODEGURU_PROFILER_TARGET_REGION: !Ref AWS::Region
       Layers:
         - !Ref pPackage
-      MemorySize: 2048
+      MemorySize: 3072
   FnIngestLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
