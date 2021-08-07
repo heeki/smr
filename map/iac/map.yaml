@@ -4,7 +4,6 @@ Transform: AWS::Serverless-2016-10-31
 Globals:
   Function:
     Runtime: python3.8
-    MemorySize: 128
     Timeout: 60
     Tracing: Active
     Layers:
@@ -16,6 +15,8 @@ Globals:
       - !Sub 'arn:aws:lambda:${AWS::Region}:546275881527:layer:xray-python38:2'
       - !Ref pPackage
 Parameters:
+  pMapMemory:
+    Type: Number
   pQueueArn:
     Type: String
   pCountersTableArn:
@@ -175,6 +176,7 @@ Resources:
           SHUFFLE_LSI2: !Ref pShuffleLSI2
           SHUFFLE_BUCKET: !Ref ShuffleBucket
           SHUFFLE_TYPE: !Ref pShuffleType
+      MemorySize: !Ref pMapMemory
   FnLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:

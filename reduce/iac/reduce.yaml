@@ -20,6 +20,10 @@ Parameters:
     Type: String
   pAslKey:
     Type: String
+  pReduce1Memory:
+    Type: Number
+  pReduce2Memory:
+    Type: Number
   pPackage:
     Type: String
   pCountersTableArn:
@@ -160,7 +164,7 @@ Resources:
           SHUFFLE_LSI2: !Ref pShuffleLSI2
           SHUFFLE_BUCKET: !Ref pShuffleBucket
           SHUFFLE_TYPE: !Ref pShuffleType
-      MemorySize: 10240
+      MemorySize: !Ref pReduce1Memory
       Timeout: 900
   FnReduce1LogGroup:
     Type: AWS::Logs::LogGroup
@@ -181,6 +185,7 @@ Resources:
           SHUFFLE_LSI2: !Ref pShuffleLSI2
           SHUFFLE_BUCKET: !Ref pShuffleBucket
           SHUFFLE_TYPE: !Ref pShuffleType
+      MemorySize: !Ref pReduce2Memory
   FnReduce2LogGroup:
     Type: AWS::Logs::LogGroup
     Properties:

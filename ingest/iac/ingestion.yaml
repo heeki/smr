@@ -20,6 +20,8 @@ Parameters:
     Type: String
   pNumTasks:
     Type: String
+  pIngestMemory:
+    Type: Number
   pBatchSize:
     Type: String
   pBatchLimit:
@@ -180,7 +182,7 @@ Resources:
           AWS_CODEGURU_PROFILER_TARGET_REGION: !Ref AWS::Region
       Layers:
         - !Ref pPackage
-      MemorySize: 3072
+      MemorySize: !Ref pIngestMemory
   FnIngestLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
