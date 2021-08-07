@@ -28,7 +28,10 @@ class SReduce:
             "ArrDelay": 6
         }
         # prep aggregation
+        subsegment = xray_recorder.begin_subsegment("DynamoDB Get")
+        subsegment.put_annotation("ExecutionId", eid)
         items = self.port.list_tier3(eid, pk)
+        xray_recorder.end_subsegment()
         aggregation = {}
         subsegment = xray_recorder.begin_subsegment("Reduce Phase")
         subsegment.put_annotation("ExecutionId", eid)
